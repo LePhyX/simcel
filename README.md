@@ -101,5 +101,5 @@ Disponibles dans [`docs/uml/`](docs/uml/).
 
 ## Équipe
 
-- [LePhyX](https://github.com/LePhyX)
-- [sofianehms](https://github.com/sofianehms)
+- [Rayân MOUAHID](https://github.com/LePhyX)
+- [Sofiane HOUMMASS](https://github.com/sofianehms)
