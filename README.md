@@ -102,3 +102,4 @@ Disponibles dans [`docs/uml/`](docs/uml/).
 ## Équipe
 
 - [LePhyX](https://github.com/LePhyX)
+- [sofianehms](https://github.com/sofianehms)
