@@ -5,4 +5,5 @@ module com.simcel {
     opens com.simcel to javafx.fxml;
 
     exports com.simcel;
+    exports com.simcel.model;
 }
