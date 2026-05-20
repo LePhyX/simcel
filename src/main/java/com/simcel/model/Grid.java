@@ -141,6 +141,7 @@ public class Grid {
                     cell = new Cell(CellType.BROUSSAILLES);
                 } else if (r < thHumide) {
                     cell = new Cell(CellType.ZONE_HUMIDE);
+                    cell.setState(CellState.EAU);
                 } else if (r < thUrbaine) {
                     cell = new Cell(CellType.ZONE_URBAINE);
                 } else {
