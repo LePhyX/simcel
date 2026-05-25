@@ -5,23 +5,33 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Grille 2D de l'automate cellulaire. Gère la structure de données,
- * l'initialisation aléatoire et la restauration de l'état initial. Aucune
- * logique de simulation ne doit figurer ici.
+ * Grille 2D de l'automate cellulaire.
+ *
+ * <p>
+ * Gère la structure de données, l'initialisation aléatoire et la restauration
+ * de l'état initial. Aucune logique de simulation ne doit figurer ici.</p>
+ *
+ * <p>
+ * La grille utilise la convention {@code cells[y][x]} en interne, mais toutes
+ * les méthodes publiques acceptent des paramètres dans l'ordre {@code (x, y)}
+ * pour plus de clarté.</p>
  */
 public class Grid {
 
     private final int width;
     private final int height;
-    private Cell[][] cells;
-    private Cell[][] initialCells;
+    private final Cell[][] cells;
+    private final Cell[][] initialCells;
 
     /**
-     * Crée une grille vide de dimensions {@code width × height}. Toutes les
-     * cellules sont initialisées à l'état {@link CellState#VIDE}.
+     * Crée une grille vide de dimensions {@code width × height}.
      *
-     * @param width nombre de colonnes (> 0)
-     * @param height nombre de lignes (> 0)
+     * <p>
+     * Toutes les cellules sont initialisées à {@link CellState#VIDE} avec le
+     * type {@link CellType#PRAIRIE}.</p>
+     *
+     * @param width nombre de colonnes, doit être &gt; 0
+     * @param height nombre de lignes, doit être &gt; 0
      */
     public Grid(int width, int height) {
         this.width = width;
@@ -52,11 +62,11 @@ public class Grid {
     }
 
     /**
-     * Retourne la cellule située à la colonne {@code x}, ligne {@code y}.
+     * Retourne la cellule à la colonne {@code x}, ligne {@code y}.
      *
      * @param x colonne
      * @param y ligne
-     * @return la cellule correspondante
+     * @return cellule correspondante, jamais {@code null}
      * @throws ArrayIndexOutOfBoundsException si les coordonnées sont hors
      * limites
      */
@@ -79,16 +89,19 @@ public class Grid {
 
     /**
      * Retourne les voisins de Moore (8 directions) de la cellule
-     * {@code (x, y)}. Les positions hors limites sont ignorées ; la liste ne
-     * contient jamais {@code null}.
+     * {@code (x, y)}.
+     *
+     * <p>
+     * Les positions hors limites sont ignorées ; la liste ne contient jamais
+     * {@code null}. Une cellule de coin n'a que 3 voisins, une cellule de bord
+     * en a 5.</p>
      *
      * @param x colonne de la cellule centrale
      * @param y ligne de la cellule centrale
-     * @return liste non nulle des cellules voisines valides (entre 3 et 8
-     * éléments)
+     * @return liste non nulle des cellules voisines valides (3 à 8 éléments)
      */
     public List<Cell> getNeighbors(int x, int y) {
-        List<Cell> neighbors = new ArrayList<>();
+        List<Cell> neighbors = new ArrayList<>(8);
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
                 if (dx == 0 && dy == 0) {
@@ -107,10 +120,11 @@ public class Grid {
     /**
      * Peuple la grille aléatoirement selon les densités fournies et mémorise
      * l'état résultant comme état initial (utilisé par {@link #reset()}).
+     *
      * <p>
      * Les densités doivent être comprises entre 0 et 1 et leur somme ne doit
      * pas dépasser 1. Les cellules restantes reçoivent l'état
-     * {@link CellState#VIDE}.
+     * {@link CellState#VIDE}.</p>
      *
      * @param densityForest proportion de cellules {@link CellType#FORET}
      * @param densityPrairie proportion de cellules {@link CellType#PRAIRIE}
@@ -131,13 +145,13 @@ public class Grid {
                     "La somme des densités ne doit pas dépasser 1.0 (valeur reçue : " + sum + ")");
         }
 
-        Random random = new Random();
-
         double thForest = densityForest;
         double thPrairie = thForest + densityPrairie;
         double thBroussailles = thPrairie + densityBroussailles;
         double thHumide = thBroussailles + densityHumide;
         double thUrbaine = thHumide + densityUrbaine;
+
+        Random random = new Random();
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
@@ -170,8 +184,11 @@ public class Grid {
 
     /**
      * Restaure la grille dans l'état mémorisé lors du dernier appel à
-     * {@link #initRandom}. La copie est profonde : aucune référence n'est
-     * partagée entre {@code cells} et {@code initialCells}.
+     * {@link #initRandom}.
+     *
+     * <p>
+     * La copie est profonde : aucune référence n'est partagée entre
+     * {@code cells} et {@code initialCells}.</p>
      */
     public void reset() {
         for (int y = 0; y < height; y++) {
@@ -182,9 +199,12 @@ public class Grid {
     }
 
     /**
-     * Place un foyer de feu sur la cellule {@code (x, y)} en appelant
-     * {@link Cell#ignite()}. Sans effet si la cellule n'est pas inflammable ou
-     * si les coordonnées sont hors limites.
+     * Place un foyer de feu sur la cellule {@code (x, y)} via
+     * {@link Cell#ignite()}.
+     *
+     * <p>
+     * Sans effet si la cellule n'est pas inflammable ou si les coordonnées sont
+     * hors limites.</p>
      *
      * @param x colonne
      * @param y ligne
@@ -196,14 +216,18 @@ public class Grid {
     }
 
     /**
-     * @return le nombre de colonnes
+     * Retourne le nombre de colonnes.
+     *
+     * @return largeur de la grille
      */
     public int getWidth() {
         return width;
     }
 
     /**
-     * @return le nombre de lignes
+     * Retourne le nombre de lignes.
+     *
+     * @return hauteur de la grille
      */
     public int getHeight() {
         return height;

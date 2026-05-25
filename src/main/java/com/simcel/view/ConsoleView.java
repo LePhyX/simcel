@@ -1,37 +1,59 @@
 package com.simcel.view;
 
 import com.simcel.model.Cell;
-import com.simcel.model.CellState;
 import com.simcel.model.Grid;
 
+/**
+ * Vue console de la simulation utilisant les séquences d'échappement ANSI.
+ *
+ * <p>
+ * Affiche la grille sous forme de blocs colorés, avec une légende et des
+ * statistiques en temps réel. L'écran est effacé avant chaque rendu pour
+ * simuler une animation.</p>
+ *
+ * <p>
+ * <b>Compatibilité :</b> requiert un terminal supportant les codes ANSI (Linux,
+ * macOS, Windows Terminal).</p>
+ */
 public class ConsoleView {
 
     private static final String CLEAR = "\033[H\033[2J";
     private static final String RESET = "\033[0m";
-
-    // Couleurs foreground
     private static final String GRAY = "\033[90m";
     private static final String GREEN_BOLD = "\033[1;92m";
     private static final String RED_BOLD = "\033[1;91m";
     private static final String YELLOW_BOLD = "\033[1;33m";
-    private static final String BG_BLACK    = "\033[40m";
+    private static final String BG_BLACK = "\033[40m";
     private static final String BLUE_BOLD = "\033[1;94m";
     private static final String WHITE_BOLD = "\033[1;97m";
 
+    /**
+     * Affiche la légende des couleurs sur la sortie standard.
+     */
     public void printLegend() {
         System.out.println("=== Simulation de Propagation de Feu ===");
         System.out.println(
-            "  " + GRAY       + "░░" + RESET + " VIDE" +
-            "  " + GREEN_BOLD + "██" + RESET + " SAIN" +
-            "  " + RED_BOLD   + "▓▓" + RESET + " EN FEU" +
-            "  " + BG_BLACK   + "  " + RESET + " BRÛLÉ" +
-            "  " + BLUE_BOLD  + "~~" + RESET + " EAU" +
-            "  " + WHITE_BOLD + "▒▒" + RESET + " ROCHER"
+                "  " + GRAY + "░░" + RESET + " VIDE"
+                + "  " + GREEN_BOLD + "██" + RESET + " SAIN"
+                + "  " + RED_BOLD + "▓▓" + RESET + " EN FEU"
+                + "  " + BG_BLACK + "  " + RESET + " BRÛLÉ"
+                + "  " + BLUE_BOLD + "~~" + RESET + " EAU"
+                + "  " + WHITE_BOLD + "▒▒" + RESET + " ROCHER"
         );
         System.out.println("=========================================");
     }
 
-    /** Efface le terminal puis affiche légende, stats et grille dans cet ordre. */
+    /**
+     * Efface le terminal puis affiche dans l'ordre : légende, statistiques,
+     * grille.
+     *
+     * <p>
+     * Le rendu est construit dans un {@link StringBuilder} avant d'être écrit
+     * en une seule fois pour limiter le scintillement.</p>
+     *
+     * @param tick numéro du tick courant
+     * @param grid grille à afficher
+     */
     public void render(int tick, Grid grid) {
         System.out.print(CLEAR);
         System.out.flush();
@@ -39,7 +61,7 @@ public class ConsoleView {
         printLegend();
         printStats(tick, grid);
 
-        int width  = grid.getWidth();
+        int width = grid.getWidth();
         int height = grid.getHeight();
 
         StringBuilder sb = new StringBuilder((width * 10 + 1) * height);
@@ -53,21 +75,27 @@ public class ConsoleView {
     }
 
     /**
-     * Affiche les statistiques du tick courant sur une ligne.
+     * Affiche une ligne de statistiques pour le tick courant : nombre de
+     * cellules saines, en feu, brûlées et taux de destruction.
+     *
+     * @param tick numéro du tick courant
+     * @param grid grille à analyser
      */
     public void printStats(int tick, Grid grid) {
-        int sain = 0, enFeu = 0, brule = 0, total = 0;
+        int sain = 0, enFeu = 0, brule = 0;
+        int total = grid.getWidth() * grid.getHeight();
 
         for (int y = 0; y < grid.getHeight(); y++) {
             for (int x = 0; x < grid.getWidth(); x++) {
-                CellState state = grid.getCell(x, y).getState();
-                total++;
-                if (state == CellState.SAIN) {
-                    sain++; 
-                }else if (state == CellState.EN_FEU) {
-                    enFeu++; 
-                }else if (state == CellState.BRULE) {
-                    brule++;
+                switch (grid.getCell(x, y).getState()) {
+                    case SAIN ->
+                        sain++;
+                    case EN_FEU ->
+                        enFeu++;
+                    case BRULE ->
+                        brule++;
+                    default -> {
+                        /* VIDE, EAU, ROCHER : ignorés */ }
                 }
             }
         }
@@ -82,6 +110,12 @@ public class ConsoleView {
                 tick, sain, enFeu, brule, tauxDestruction);
     }
 
+    // -------------------------------------------------------------------------
+    // Méthodes privées
+    // -------------------------------------------------------------------------
+    /**
+     * Retourne la séquence ANSI correspondant à l'état de la cellule.
+     */
     private String toColorBlock(Cell cell) {
         return switch (cell.getState()) {
             case VIDE ->
