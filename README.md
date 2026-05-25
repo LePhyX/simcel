@@ -36,8 +36,6 @@ cd simcel
 
 ## Lancement
 
-> Instructions à compléter au fil du projet.
-
 ### Mode GUI
 
 ```bash
@@ -47,26 +45,17 @@ mvn javafx:run
 ### Mode console (headless)
 
 ```bash
-mvn package
-java -jar target/simcel.jar --width 50 --height 50 --ticks 200 --delay 100
+bash launchers/run-cli.sh [--width W] [--height H] [--ticks T] [--delay D]
 ```
 
 Arguments disponibles :
 
-| Argument | Description | Défaut |
-|----------|-------------|--------|
-| `--width` | Largeur de la grille | 50 |
-| `--height` | Hauteur de la grille | 50 |
-| `--ticks` | Nombre maximum de ticks | 100 |
-| `--delay` | Délai entre chaque tick (ms) | 200 |
-
----
-
-## Tests
-
-```bash
-mvn test
-```
+| Argument   | Description                  | Défaut |
+| ---------- | ---------------------------- | ------ |
+| `--width`  | Largeur de la grille         | 50     |
+| `--height` | Hauteur de la grille         | 50     |
+| `--ticks`  | Nombre maximum de ticks      | 100    |
+| `--delay`  | Délai entre chaque tick (ms) | 200    |
 
 ---
 
@@ -74,11 +63,11 @@ mvn test
 
 L'application suit le patron **MVC** :
 
-| Couche | Package | Rôle |
-|--------|---------|------|
-| Modèle | `model` | Logique métier : `Cell`, `Grid`, `Environment`, `FireSimulator` |
-| Vue | `view` | Affichage : `GridView`, `ConsoleView`, `StatisticsPanel`, `ChartView` |
-| Contrôleur | `controller` | Orchestration : `SimulationController`, `ConfigController` |
+| Couche     | Package      | Rôle                                                                  |
+| ---------- | ------------ | --------------------------------------------------------------------- |
+| Modèle     | `model`      | Logique métier : `Cell`, `Grid`, `Environment`, `FireSimulator`       |
+| Vue        | `view`       | Affichage : `GridView`, `ConsoleView`, `StatisticsPanel`, `ChartView` |
+| Contrôleur | `controller` | Orchestration : `SimulationController`, `ConfigController`            |
 
 ---
 
@@ -90,12 +79,10 @@ Disponibles dans [`docs/uml/`](docs/uml/).
 
 ## Convention de branches
 
-| Préfixe | Usage |
-|---------|-------|
-| `main` | Code stable livrable |
-| `develop` | Intégration continue |
-| `feature/<nom>` | Nouvelle fonctionnalité |
-| `fix/<nom>` | Correction de bug |
+| Préfixe            | Usage                |
+| ------------------ | -------------------- |
+| `main`             | Code stable livrable |
+| `dev` ou `develop` | Intégration continue |
 
 ---
 

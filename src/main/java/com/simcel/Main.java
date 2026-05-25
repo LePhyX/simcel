@@ -60,8 +60,7 @@ public class Main extends Application {
         simulator.addListener(new SimulationListener() {
             @Override
             public void onTick(int tick, Grid g) {
-                view.render(g);
-                view.printStats(tick, g);
+                view.render(tick, g);
                 lastTick.set(tick);
 
                 if (tick >= finalMaxTicks || !hasActiveFire(g)) {
@@ -82,6 +81,7 @@ public class Main extends Application {
         System.out.println("\n=== Simulation terminée ===");
         System.out.printf("Ticks écoulés : %d%n", lastTick.get());
         view.printStats(lastTick.get(), grid);
+
     }
 
     private static boolean hasActiveFire(Grid grid) {
