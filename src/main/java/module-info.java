@@ -6,4 +6,6 @@ module com.simcel {
 
     exports com.simcel;
     exports com.simcel.model;
+    exports com.simcel.controller;
+    exports com.simcel.view;
 }
