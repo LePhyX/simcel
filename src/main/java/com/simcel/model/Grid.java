@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Grille 2D de l'automate cellulaire.
- * Gère la structure de données, l'initialisation aléatoire et la restauration
- * de l'état initial. Aucune logique de simulation ne doit figurer ici.
+ * Grille 2D de l'automate cellulaire. Gère la structure de données,
+ * l'initialisation aléatoire et la restauration de l'état initial. Aucune
+ * logique de simulation ne doit figurer ici.
  */
 public class Grid {
 
@@ -17,10 +17,10 @@ public class Grid {
     private Cell[][] initialCells;
 
     /**
-     * Crée une grille vide de dimensions {@code width × height}.
-     * Toutes les cellules sont initialisées à l'état {@link CellState#VIDE}.
+     * Crée une grille vide de dimensions {@code width × height}. Toutes les
+     * cellules sont initialisées à l'état {@link CellState#VIDE}.
      *
-     * @param width  nombre de colonnes (> 0)
+     * @param width nombre de colonnes (> 0)
      * @param height nombre de lignes (> 0)
      */
     public Grid(int width, int height) {
@@ -40,7 +40,8 @@ public class Grid {
     }
 
     /**
-     * Indique si les coordonnées {@code (x, y)} sont dans les limites de la grille.
+     * Indique si les coordonnées {@code (x, y)} sont dans les limites de la
+     * grille.
      *
      * @param x colonne
      * @param y ligne
@@ -56,7 +57,8 @@ public class Grid {
      * @param x colonne
      * @param y ligne
      * @return la cellule correspondante
-     * @throws ArrayIndexOutOfBoundsException si les coordonnées sont hors limites
+     * @throws ArrayIndexOutOfBoundsException si les coordonnées sont hors
+     * limites
      */
     public Cell getCell(int x, int y) {
         return cells[y][x];
@@ -65,28 +67,33 @@ public class Grid {
     /**
      * Remplace la cellule à la colonne {@code x}, ligne {@code y}.
      *
-     * @param x    colonne
-     * @param y    ligne
+     * @param x colonne
+     * @param y ligne
      * @param cell nouvelle cellule, non {@code null}
-     * @throws ArrayIndexOutOfBoundsException si les coordonnées sont hors limites
+     * @throws ArrayIndexOutOfBoundsException si les coordonnées sont hors
+     * limites
      */
     public void setCell(int x, int y, Cell cell) {
         cells[y][x] = cell;
     }
 
     /**
-     * Retourne les voisins de Moore (8 directions) de la cellule {@code (x, y)}.
-     * Les positions hors limites sont ignorées ; la liste ne contient jamais {@code null}.
+     * Retourne les voisins de Moore (8 directions) de la cellule
+     * {@code (x, y)}. Les positions hors limites sont ignorées ; la liste ne
+     * contient jamais {@code null}.
      *
      * @param x colonne de la cellule centrale
      * @param y ligne de la cellule centrale
-     * @return liste non nulle des cellules voisines valides (entre 3 et 8 éléments)
+     * @return liste non nulle des cellules voisines valides (entre 3 et 8
+     * éléments)
      */
     public List<Cell> getNeighbors(int x, int y) {
         List<Cell> neighbors = new ArrayList<>();
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
-                if (dx == 0 && dy == 0) continue;
+                if (dx == 0 && dy == 0) {
+                    continue;
+                }
                 int nx = x + dx;
                 int ny = y + dy;
                 if (isInBounds(nx, ny)) {
@@ -102,20 +109,23 @@ public class Grid {
      * l'état résultant comme état initial (utilisé par {@link #reset()}).
      * <p>
      * Les densités doivent être comprises entre 0 et 1 et leur somme ne doit
-     * pas dépasser 1. Les cellules restantes reçoivent l'état {@link CellState#VIDE}.
+     * pas dépasser 1. Les cellules restantes reçoivent l'état
+     * {@link CellState#VIDE}.
      *
-     * @param densityForest       proportion de cellules {@link CellType#FORET}
-     * @param densityPrairie      proportion de cellules {@link CellType#PRAIRIE}
-     * @param densityBroussailles proportion de cellules {@link CellType#BROUSSAILLES}
-     * @param densityHumide       proportion de cellules {@link CellType#ZONE_HUMIDE}
-     * @param densityUrbaine      proportion de cellules {@link CellType#ZONE_URBAINE}
+     * @param densityForest proportion de cellules {@link CellType#FORET}
+     * @param densityPrairie proportion de cellules {@link CellType#PRAIRIE}
+     * @param densityBroussailles proportion de cellules
+     * {@link CellType#BROUSSAILLES}
+     * @param densityHumide proportion de cellules {@link CellType#ZONE_HUMIDE}
+     * @param densityUrbaine proportion de cellules
+     * {@link CellType#ZONE_URBAINE}
      * @throws IllegalArgumentException si la somme des densités dépasse 1.0
      */
     public void initRandom(double densityForest, double densityPrairie,
-                           double densityBroussailles, double densityHumide,
-                           double densityUrbaine) {
+            double densityBroussailles, double densityHumide,
+            double densityUrbaine) {
         double sum = densityForest + densityPrairie + densityBroussailles
-                   + densityHumide + densityUrbaine;
+                + densityHumide + densityUrbaine;
         if (sum > 1.0 + 1e-9) {
             throw new IllegalArgumentException(
                     "La somme des densités ne doit pas dépasser 1.0 (valeur reçue : " + sum + ")");
@@ -123,11 +133,11 @@ public class Grid {
 
         Random random = new Random();
 
-        double thForest       = densityForest;
-        double thPrairie      = thForest       + densityPrairie;
-        double thBroussailles = thPrairie      + densityBroussailles;
-        double thHumide       = thBroussailles + densityHumide;
-        double thUrbaine      = thHumide       + densityUrbaine;
+        double thForest = densityForest;
+        double thPrairie = thForest + densityPrairie;
+        double thBroussailles = thPrairie + densityBroussailles;
+        double thHumide = thBroussailles + densityHumide;
+        double thUrbaine = thHumide + densityUrbaine;
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
@@ -141,7 +151,6 @@ public class Grid {
                     cell = new Cell(CellType.BROUSSAILLES);
                 } else if (r < thHumide) {
                     cell = new Cell(CellType.ZONE_HUMIDE);
-                    cell.setState(CellState.EAU);
                 } else if (r < thUrbaine) {
                     cell = new Cell(CellType.ZONE_URBAINE);
                 } else {
@@ -174,8 +183,8 @@ public class Grid {
 
     /**
      * Place un foyer de feu sur la cellule {@code (x, y)} en appelant
-     * {@link Cell#ignite()}. Sans effet si la cellule n'est pas inflammable
-     * ou si les coordonnées sont hors limites.
+     * {@link Cell#ignite()}. Sans effet si la cellule n'est pas inflammable ou
+     * si les coordonnées sont hors limites.
      *
      * @param x colonne
      * @param y ligne
@@ -186,9 +195,17 @@ public class Grid {
         }
     }
 
-    /** @return le nombre de colonnes */
-    public int getWidth() { return width; }
+    /**
+     * @return le nombre de colonnes
+     */
+    public int getWidth() {
+        return width;
+    }
 
-    /** @return le nombre de lignes */
-    public int getHeight() { return height; }
+    /**
+     * @return le nombre de lignes
+     */
+    public int getHeight() {
+        return height;
+    }
 }
