@@ -45,7 +45,7 @@ mvn javafx:run
 ### Mode console (headless)
 
 ```bash
-bash launchers/run-cli.sh [--width W] [--height H] [--ticks T] [--delay D]
+bash launchers/run-cli.sh
 ```
 
 Arguments disponibles :
