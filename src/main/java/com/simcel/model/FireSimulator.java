@@ -70,6 +70,10 @@ public class FireSimulator {
         return tgt.getType().getInflammability();
     }
 
+    public Grid getGrid() {
+        return grid;
+    }
+
     public void addListener(SimulationListener l) {
         listeners.add(l);
     }
