@@ -50,12 +50,29 @@ bash launchers/run-cli.sh
 
 Arguments disponibles :
 
-| Argument   | Description                  | Défaut |
-| ---------- | ---------------------------- | ------ |
-| `--width`  | Largeur de la grille         | 50     |
-| `--height` | Hauteur de la grille         | 50     |
-| `--ticks`  | Nombre maximum de ticks      | 100    |
-| `--delay`  | Délai entre chaque tick (ms) | 200    |
+| Argument            | Description                                            | Défaut |
+| ------------------- | ------------------------------------------------------ | ------ |
+| `--width`           | Largeur de la grille                                   | 40     |
+| `--height`          | Hauteur de la grille                                   | 20     |
+| `--ticks`           | Nombre maximum de ticks                                | 100    |
+| `--delay`           | Délai entre chaque tick (ms)                           | 200    |
+| `--wind-direction`  | Direction du vent : `N` `NE` `E` `SE` `S` `SO` `O` `NO` | `N`  |
+| `--wind-strength`   | Force du vent, entier dans `[0, 5]` (0 = calme, 5 = tempête) | `0` |
+
+Exemples :
+
+```bash
+# Vent fort vers le Nord — le feu remonte la grille
+bash launchers/run-cli.sh --wind-direction N --wind-strength 5
+
+# Vent diagonal NE modéré
+bash launchers/run-cli.sh --wind-direction NE --wind-strength 3
+
+# Sans vent — propagation isotrope (comportement par défaut)
+bash launchers/run-cli.sh --wind-strength 0
+```
+
+> **Effet du vent :** la probabilité d'inflammation d'une cellule voisine est multipliée par un facteur `1 + (force/5) × cos θ`, où θ est l'angle entre la direction du vent et le vecteur source→cible. Avec une force de 5, la probabilité est doublée dans le sens du vent et nulle en sens opposé.
 
 ---
 
