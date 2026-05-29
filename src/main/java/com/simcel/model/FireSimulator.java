@@ -72,20 +72,30 @@ public class FireSimulator {
     }
 
     /**
-     * Calcule la probabilité qu'une cellule cible {@code tgt} s'enflamme à
-     * partir d'une cellule source {@code src} en feu.
+     * Calcule la probabilité qu'une cellule cible s'enflamme à partir d'une
+     * cellule source en feu, en intégrant l'effet du vent.
      *
      * <p>
-     * Actuellement basée uniquement sur l'inflammabilité du type de terrain
-     * cible. Les facteurs environnementaux (vent, humidité) sont disponibles
-     * via {@link #environment} et pourront être intégrés ici.</p>
+     * La formule appliquée est :</p>
+     * <pre>
+     *   windFactor = 1.0 + (windStrength / 5.0) × cos(θ)
+     *   P = clamp(baseInflammability × windFactor, 0.0, 1.0)
+     * </pre>
+     * <p>
+     * où θ est l'angle entre le vecteur vent et le vecteur source→cible. Si
+     * l'intensité du vent est nulle, {@code windFactor} vaut {@code 1.0}.</p>
      *
-     * @param src cellule source (en feu)
-     * @param tgt cellule cible (candidate à l'inflammation)
+     * @param srcX colonne de la cellule source
+     * @param srcY ligne de la cellule source
+     * @param tgtX colonne de la cellule cible
+     * @param tgtY ligne de la cellule cible
+     * @param tgt  cellule cible (candidate à l'inflammation)
      * @return probabilité dans {@code [0.0, 1.0]}
      */
-    public double computeInflammationProbability(Cell src, Cell tgt) {
-        return tgt.getType().getInflammability();
+    public double computeInflammationProbability(int srcX, int srcY, int tgtX, int tgtY, Cell tgt) {
+        double base = tgt.getType().getInflammability();
+        double windFactor = applyWindFactor(tgtX - srcX, tgtY - srcY);
+        return Math.max(0.0, Math.min(1.0, base * windFactor));
     }
 
     /**
@@ -155,12 +165,21 @@ public class FireSimulator {
         for (int x = 0; x < w; x++) {
             for (int y = 0; y < h; y++) {
                 if (snapshot[x][y] == CellState.EN_FEU) {
-                    Cell src = grid.getCell(x, y);
-                    for (Cell neighbor : grid.getNeighbors(x, y)) {
-                        if (neighbor.getState() == CellState.SAIN) {
-                            double p = computeInflammationProbability(src, neighbor);
-                            if (random.nextDouble() < p) {
-                                toIgnite.add(neighbor);
+                    for (int ndy = -1; ndy <= 1; ndy++) {
+                        for (int ndx = -1; ndx <= 1; ndx++) {
+                            if (ndx == 0 && ndy == 0) {
+                                continue;
+                            }
+                            int nx = x + ndx;
+                            int ny = y + ndy;
+                            if (grid.isInBounds(nx, ny)) {
+                                Cell neighbor = grid.getCell(nx, ny);
+                                if (neighbor.getState() == CellState.SAIN) {
+                                    double p = computeInflammationProbability(x, y, nx, ny, neighbor);
+                                    if (random.nextDouble() < p) {
+                                        toIgnite.add(neighbor);
+                                    }
+                                }
                             }
                         }
                     }
@@ -196,5 +215,35 @@ public class FireSimulator {
         for (SimulationListener listener : listeners) {
             listener.onTick(tick, grid);
         }
+    }
+
+    /**
+     * Calcule le facteur multiplicatif du vent pour une propagation dans la
+     * direction {@code (pdx, pdy)}.
+     *
+     * <p>
+     * Retourne {@code 1.0} si l'intensité du vent est nulle. Sinon, utilise le
+     * cosinus de l'angle entre le vecteur vent et le vecteur de propagation
+     * ({@code cosθ = dot(vent, propagation) / (|vent| × |propagation|)}) :</p>
+     * <pre>
+     *   windFactor = 1.0 + (windStrength / 5.0) × cosθ
+     * </pre>
+     *
+     * @param pdx composante X du vecteur source→cible
+     * @param pdy composante Y du vecteur source→cible
+     * @return facteur vent (peut être &lt; 1 ou &gt; 1 ; le clamp est à la charge de l'appelant)
+     */
+    private double applyWindFactor(int pdx, int pdy) {
+        int windStrength = environment.getWindStrength();
+        if (windStrength == 0) {
+            return 1.0;
+        }
+        int wdx = environment.getDirection().getDx();
+        int wdy = environment.getDirection().getDy();
+        double dot = wdx * pdx + wdy * pdy;
+        double windMag = Math.sqrt(wdx * wdx + wdy * wdy);
+        double propMag = Math.sqrt(pdx * pdx + pdy * pdy);
+        double cosTheta = dot / (windMag * propMag);
+        return 1.0 + (windStrength / 5.0) * cosTheta;
     }
 }

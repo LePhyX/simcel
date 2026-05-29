@@ -21,3 +21,4 @@ public enum SimulationState {
     /** La boucle est suspendue ; les ticks ne s'accumulent plus. */
     PAUSED
 }
+    

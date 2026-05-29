@@ -9,6 +9,7 @@ import com.simcel.model.Environment;
 import com.simcel.model.FireSimulator;
 import com.simcel.model.Grid;
 import com.simcel.model.SimulationListener;
+import com.simcel.model.WindDirection;
 import com.simcel.view.ConsoleView;
 
 import javafx.application.Application;
@@ -71,6 +72,8 @@ public class Main extends Application {
         int height = 20;
         int maxTicks = 100;
         int delay = 200;
+        WindDirection windDir = WindDirection.N;
+        int windStrength = 0;
 
         for (int i = 1; i < args.length - 1; i++) {
             switch (args[i]) {
@@ -81,7 +84,11 @@ public class Main extends Application {
                 case "--ticks" ->
                     maxTicks = Integer.parseInt(args[++i]);
                 case "--delay" ->
-                    delay = Integer.parseInt(args[++i]);
+                    delay = Math.max(1, Integer.parseInt(args[++i]));
+                case "--wind-direction" ->
+                    windDir = WindDirection.valueOf(args[++i].toUpperCase());
+                case "--wind-strength" ->
+                    windStrength = Integer.parseInt(args[++i]);
             }
         }
 
@@ -89,7 +96,7 @@ public class Main extends Application {
         grid.initRandom(0.6, 0.2, 0.1, 0.05, 0.05);
         grid.setFire(width / 2, height / 2);
 
-        Environment env = new Environment();
+        Environment env = new Environment(windDir, windStrength, 50);
         FireSimulator simulator = new FireSimulator(grid, env);
         SimulationController ctrl = new SimulationController(simulator, delay);
         ConsoleView view = new ConsoleView();
