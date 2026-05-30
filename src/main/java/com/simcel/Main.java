@@ -74,6 +74,7 @@ public class Main extends Application {
         int delay = 200;
         WindDirection windDir = WindDirection.N;
         int windStrength = 0;
+        int humidity = 0;
 
         for (int i = 1; i < args.length - 1; i++) {
             switch (args[i]) {
@@ -89,6 +90,8 @@ public class Main extends Application {
                     windDir = WindDirection.valueOf(args[++i].toUpperCase());
                 case "--wind-strength" ->
                     windStrength = Integer.parseInt(args[++i]);
+                case "--humidity" ->
+                    humidity = Integer.parseInt(args[++i]);
             }
         }
 
@@ -96,7 +99,7 @@ public class Main extends Application {
         grid.initRandom(0.6, 0.2, 0.1, 0.05, 0.05);
         grid.setFire(width / 2, height / 2);
 
-        Environment env = new Environment(windDir, windStrength, 50);
+        Environment env = new Environment(windDir, windStrength, humidity);
         FireSimulator simulator = new FireSimulator(grid, env);
         SimulationController ctrl = new SimulationController(simulator, delay);
         ConsoleView view = new ConsoleView();

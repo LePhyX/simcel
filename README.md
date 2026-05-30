@@ -58,21 +58,24 @@ Arguments disponibles :
 | `--delay`           | Délai entre chaque tick (ms)                           | 200    |
 | `--wind-direction`  | Direction du vent : `N` `NE` `E` `SE` `S` `SO` `O` `NO` | `N`  |
 | `--wind-strength`   | Force du vent, entier dans `[0, 5]` (0 = calme, 5 = tempête) | `0` |
+| `--humidity`        | Taux d'humidité ambiante, entier dans `[0, 100]` (0 = neutre, 100 = propagation impossible) | `0` |
 
 Exemples :
 
 ```bash
-# Vent fort vers le Nord — le feu remonte la grille
-bash launchers/run-cli.sh --wind-direction N --wind-strength 5
+# Vent fort vers le Nord, terrain sec — propagation rapide vers le haut
+bash launchers/run-cli.sh --wind-direction N --wind-strength 5 --humidity 10
 
-# Vent diagonal NE modéré
-bash launchers/run-cli.sh --wind-direction NE --wind-strength 3
+# Vent diagonal NE modéré, humidité élevée — propagation ralentie
+bash launchers/run-cli.sh --wind-direction NE --wind-strength 3 --humidity 80
 
-# Sans vent — propagation isotrope (comportement par défaut)
-bash launchers/run-cli.sh --wind-strength 0
+# Sans vent, humidité maximale — propagation quasi nulle
+bash launchers/run-cli.sh --wind-strength 0 --humidity 100
 ```
 
-> **Effet du vent :** la probabilité d'inflammation d'une cellule voisine est multipliée par un facteur `1 + (force/5) × cos θ`, où θ est l'angle entre la direction du vent et le vecteur source→cible. Avec une force de 5, la probabilité est doublée dans le sens du vent et nulle en sens opposé.
+> **Effet du vent :** la probabilité d'inflammation est multipliée par `1 + (force/5) × cos θ`, où θ est l'angle entre la direction du vent et le vecteur source→cible. Avec une force de 5, la probabilité est doublée dans le sens du vent et nulle en sens opposé.
+>
+> **Effet de l'humidité :** la probabilité est multipliée par `1 − humidity/100`. À 0 % la propagation est maximale, à 100 % elle est impossible.
 
 ---
 
