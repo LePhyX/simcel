@@ -73,13 +73,14 @@ public class FireSimulator {
 
     /**
      * Calcule la probabilité qu'une cellule cible s'enflamme à partir d'une
-     * cellule source en feu, en intégrant l'effet du vent.
+     * cellule source en feu, en intégrant le vent et l'humidité.
      *
      * <p>
      * La formule appliquée est :</p>
      * <pre>
-     *   windFactor = 1.0 + (windStrength / 5.0) × cos(θ)
-     *   P = clamp(baseInflammability × windFactor, 0.0, 1.0)
+     *   windFactor     = 1.0 + (windStrength / 5.0) × cos(θ)
+     *   humidityFactor = 1.0 − humidity / 100.0
+     *   P = clamp(baseInflammability × windFactor × humidityFactor, 0.0, 1.0)
      * </pre>
      * <p>
      * où θ est l'angle entre le vecteur vent et le vecteur source→cible. Si
@@ -95,7 +96,8 @@ public class FireSimulator {
     public double computeInflammationProbability(int srcX, int srcY, int tgtX, int tgtY, Cell tgt) {
         double base = tgt.getType().getInflammability();
         double windFactor = applyWindFactor(tgtX - srcX, tgtY - srcY);
-        return Math.max(0.0, Math.min(1.0, base * windFactor));
+        double p = applyHumidityFactor(base * windFactor);
+        return Math.max(0.0, Math.min(1.0, p));
     }
 
     /**
@@ -215,6 +217,20 @@ public class FireSimulator {
         for (SimulationListener listener : listeners) {
             listener.onTick(tick, grid);
         }
+    }
+
+    /**
+     * Applique le facteur d'humidité à une probabilité intermédiaire.
+     *
+     * <pre>
+     *   P_finale = p × (1.0 − humidity / 100.0)
+     * </pre>
+     *
+     * @param p probabilité avant correction d'humidité
+     * @return probabilité réduite par l'humidité ambiante
+     */
+    private double applyHumidityFactor(double p) {
+        return p * (1.0 - environment.getHumidity() / 100.0);
     }
 
     /**
