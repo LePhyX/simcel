@@ -1,0 +1,83 @@
+/* ============================================================
+   SimCel — Thème sombre
+   ============================================================ */
+
+/* ---------- Base ---------- */
+.root {
+    -fx-background-color: #1a1a2e;
+    -fx-font-family: "Segoe UI", "Ubuntu", "DejaVu Sans", sans-serif;
+    -fx-font-size: 13px;
+}
+
+/* ---------- Labels ---------- */
+.label {
+    -fx-text-fill: #cccccc;
+}
+
+.label-title {
+    -fx-text-fill: #e8e8f0;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+/* ---------- Boutons ---------- */
+.button {
+    -fx-background-color: #2d2d55;
+    -fx-text-fill: #dcdcf0;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-cursor: hand;
+    -fx-padding: 7 14 7 14;
+    -fx-font-size: 12px;
+}
+
+.button:hover {
+    -fx-background-color: #3d3d75;
+}
+
+.button:pressed {
+    -fx-background-color: #1a1a3a;
+    -fx-text-fill: #ffffff;
+}
+
+.button:disabled {
+    -fx-opacity: 0.35;
+    -fx-cursor: default;
+}
+
+/* ---------- Séparateurs ---------- */
+.separator > .line {
+    -fx-border-color: #2a2a4a;
+    -fx-border-width: 1px;
+}
+
+/* ---------- Slider ---------- */
+.slider .track {
+    -fx-background-color: #2d2d55;
+    -fx-background-radius: 2;
+}
+
+.slider .thumb {
+    -fx-background-color: #5555cc;
+    -fx-background-radius: 5;
+    -fx-effect: none;
+}
+
+.slider .thumb:hover {
+    -fx-background-color: #7777ee;
+}
+
+.slider .axis {
+    -fx-tick-label-fill: #777788;
+    -fx-font-size: 10px;
+}
+
+/* ---------- Panneau droit ---------- */
+.right-panel {
+    -fx-background-color: #12122a;
+}
+
+/* ---------- Zone grille ---------- */
+.grid-pane {
+    -fx-background-color: #0f0f1e;
+}
