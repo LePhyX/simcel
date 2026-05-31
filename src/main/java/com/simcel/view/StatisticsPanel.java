@@ -70,6 +70,10 @@ public class StatisticsPanel extends VBox implements SimulationListener {
         });
     }
 
+    /**
+     * Aucune action requise à la fin de simulation : les labels conservent
+     * les valeurs du dernier tick.
+     */
     @Override
     public void onSimulationEnd() {}
 
