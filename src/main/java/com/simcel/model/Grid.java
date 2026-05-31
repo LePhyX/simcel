@@ -183,8 +183,23 @@ public class Grid {
     }
 
     /**
+     * Mémorise l'état courant comme état initial pour le prochain
+     * {@link #reset()}.
+     *
+     * <p>À appeler après toute modification manuelle (par exemple
+     * {@link #setFire}) pour que le reset les inclue. {@link #initRandom}
+     * prend son propre snapshot avant {@code setFire}, d'où la nécessité de
+     * rappeler cette méthode explicitement si le foyer doit être conservé.</p>
+     */
+    public void saveInitialState() {
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                initialCells[y][x] = cells[y][x].copy();
+    }
+
+    /**
      * Restaure la grille dans l'état mémorisé lors du dernier appel à
-     * {@link #initRandom}.
+     * {@link #initRandom} ou {@link #saveInitialState}.
      *
      * <p>
      * La copie est profonde : aucune référence n'est partagée entre

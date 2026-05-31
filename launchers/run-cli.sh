@@ -12,9 +12,9 @@
 #   --wind-strength  S    Force du vent, entier dans [0,5]      (défaut : 0)
 #   --humidity       H    Taux d'humidité, entier dans [0,100]  (défaut : 0)
 
-set -e
+set -e # Exit on error
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." # Se placer à la racine du projet pour que Maven puisse trouver le pom.xml
 
-mvn compile -q
-mvn exec:java -q -Dexec.args="--headless $*"
+mvn compile -q # Compiler le projet sans afficher les logs détaillés
+mvn exec:java -q -Dexec.args="--headless $*" # Lancer l'application en mode CLI avec les arguments passés au script

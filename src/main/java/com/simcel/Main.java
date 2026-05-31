@@ -11,6 +11,7 @@ import com.simcel.model.Grid;
 import com.simcel.model.SimulationListener;
 import com.simcel.model.WindDirection;
 import com.simcel.view.ConsoleView;
+import com.simcel.view.MainWindow;
 
 import javafx.application.Application;
 import javafx.stage.Stage;
@@ -37,8 +38,16 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("Simulation de Propagation de Feu");
-        primaryStage.show();
+        Grid grid = new Grid(50, 30);
+        grid.initRandom(0.6, 0.2, 0.1, 0.05, 0.05);
+        grid.setFire(25, 15);
+        grid.saveInitialState();
+
+        Environment env               = new Environment();
+        FireSimulator simulator       = new FireSimulator(grid, env);
+        SimulationController ctrl     = new SimulationController(simulator, 200);
+
+        new MainWindow(simulator, ctrl).show(primaryStage);
     }
 
     /**
