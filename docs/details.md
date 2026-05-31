@@ -18,10 +18,15 @@
    - [SimulationController](#41-simulationcontroller)
 5. [La vue (`view/`)](#5-la-vue-view)
    - [ConsoleView](#51-consoleview)
+   - [GridView](#52-gridview)
+   - [StatisticsPanel](#53-statisticspanel)
+   - [ChartView](#54-chartview)
+   - [MainWindow](#55-mainwindow)
 6. [Point d'entrée (`Main`)](#6-point-dentrée-main)
-7. [Configuration du module (`module-info.java`)](#7-configuration-du-module-module-infojava)
-8. [Algorithme de simulation pas à pas](#8-algorithme-de-simulation-pas-à-pas)
-9. [Diagramme des dépendances entre classes](#9-diagramme-des-dépendances-entre-classes)
+7. [Scripts de lancement (`launchers/`)](#7-scripts-de-lancement-launchers)
+8. [Configuration du module (`module-info.java`)](#8-configuration-du-module-module-infojava)
+9. [Algorithme de simulation pas à pas](#9-algorithme-de-simulation-pas-à-pas)
+10. [Diagramme des dépendances entre classes](#10-diagramme-des-dépendances-entre-classes)
 
 ---
 
@@ -32,7 +37,7 @@ SimCel est une **simulation de propagation d'incendie** fondée sur le modèle d
 Le projet propose deux modes de lancement :
 
 - **Mode console** (`--headless`) : animation textuelle ANSI dans le terminal.
-- **Mode graphique** (défaut) : squelette JavaFX prêt à être enrichi d'une interface.
+- **Mode graphique** (défaut) : interface JavaFX avec grille interactive, statistiques et graphique d'évolution.
 
 ---
 
@@ -58,13 +63,17 @@ com.simcel
 │   └── SimulationController   Démarre, pause, arrête la simulation
 │
 ├── view/           ← Affichage
-│   └── ConsoleView    Vue console ANSI
+│   ├── ConsoleView      Vue console ANSI (mode headless)
+│   ├── GridView         Canvas JavaFX de la grille (mode graphique)
+│   ├── StatisticsPanel  Panneau de statistiques en temps réel
+│   ├── ChartView        Graphique d'évolution temporelle (Canvas custom)
+│   └── MainWindow       Fenêtre principale JavaFX, zoom et déplacement
 │
 └── Main            ← Point d'entrée (JavaFX ou CLI)
 ```
 
-Le **modèle** ne connaît ni la vue ni le contrôleur.  
-La **vue** ne connaît que le modèle (lecture seule).  
+Le **modèle** ne connaît ni la vue ni le contrôleur.
+La **vue** ne connaît que le modèle (lecture seule).
 Le **contrôleur** orchestre le modèle et notifie la vue via le patron **Observer**.
 
 ---
@@ -203,6 +212,7 @@ public class Grid {
 
 - **`getNeighbors(x, y)`** : retourne les 8 voisins de Moore d'une cellule (les positions hors limites sont ignorées). Les cellules de coin ont 3 voisins, les cellules de bord en ont 5.
 - **`initRandom(...)`** : peuple la grille aléatoirement en répartissant les types de terrain selon des densités passées en paramètres (somme ≤ 1.0). Mémorise l'état résultant dans `initialCells`.
+- **`saveInitialState()`** : mémorise explicitement l'état courant comme état de référence pour le prochain `reset()`. À appeler après `setFire()` pour que le foyer initial soit restauré lors d'un reset.
 - **`reset()`** : restaure `cells` à partir de `initialCells` par copie profonde — aucune référence n'est partagée.
 - **`setFire(x, y)`** : déclenche un foyer en appelant `Cell.ignite()` sur la cellule cible.
 
@@ -211,8 +221,11 @@ public class Grid {
 ```java
 grid.initRandom(0.6, 0.2, 0.1, 0.05, 0.05);
 // 60% forêt, 20% prairie, 10% broussailles, 5% humide, 5% urbain
-grid.setFire(width / 2, height / 2);  // foyer au centre
+grid.setFire(25, 15);          // foyer au centre
+grid.saveInitialState();       // mémorise le foyer pour le reset
 ```
+
+> **Pourquoi `saveInitialState()` est nécessaire :** `initRandom()` prend son snapshot dans `initialCells` *avant* l'appel à `setFire()`. Sans `saveInitialState()`, un reset effacerait le foyer initial.
 
 ---
 
@@ -380,6 +393,182 @@ Associe chaque `CellState` à une représentation visuelle de deux caractères :
 
 ---
 
+### 5.2 `GridView`
+
+**Rôle :** rendu graphique de la grille sur un `Canvas` JavaFX. Implémente `SimulationListener` pour se redessiner automatiquement après chaque tick.
+
+#### Thread safety et double buffering
+
+`onTick()` est appelé depuis le thread de simulation (pas le thread JavaFX). La mise à jour du canvas doit se faire sur le thread JavaFX :
+
+```java
+@Override
+public void onTick(int tick, Grid grid) {
+    CellState[][] snapshot = snapshot(grid); // capture sur le thread de simulation
+    Platform.runLater(() -> draw(snapshot));  // rendu sur le thread JavaFX
+}
+```
+
+Le snapshot est un tableau indépendant : le tick suivant peut modifier la grille sans affecter le rendu en cours.
+
+#### Cache de couleurs
+
+Les objets `Color` JavaFX sont coûteux à créer (parsing hexadécimal). Ils sont précalculés une seule fois dans un tableau statique indexé par `CellState.ordinal()` :
+
+```java
+private static final Color[] STATE_COLORS;
+static {
+    for (CellState s : CellState.values())
+        STATE_COLORS[s.ordinal()] = Color.web(s.getColor());
+}
+```
+
+#### Grille visuelle
+
+Une constante `GRID_GAP = 1.0` réduit la taille de chaque cellule d'un pixel. Le fond sombre (`#0a0a1a`) visible entre les cellules simule des lignes de grille sans tracé explicite.
+
+#### API publique
+
+- **`refresh(Grid)`** : redessine immédiatement depuis le thread JavaFX (utilisé par le bouton Réinitialiser).
+- **`getCellAt(pixelX, pixelY)`** : convertit des coordonnées pixel en coordonnées de grille `[col, ligne]`. Retourne `null` si hors limites.
+- **`getCellSize()`** : retourne la taille d'une cellule en pixels.
+
+La classe est déclarée `final` pour éliminer l'avertissement "overridable method call in constructor" (appel de `refresh()` dans le constructeur).
+
+---
+
+### 5.3 `StatisticsPanel`
+
+**Rôle :** panneau `VBox` affichant cinq métriques en temps réel : numéro de tick, cellules saines, en feu, brûlées, et taux de destruction.
+
+```
+Statistiques
+────────────
+Tick : 42
+Sains : 312
+En feu : 15
+Brûlés : 73
+Destruction : 18.3 %
+```
+
+#### Séparation des threads
+
+Les comptages sont effectués sur le thread de simulation (dans `onTick`), seule la mise à jour des labels est déléguée au thread JavaFX :
+
+```java
+final int fSain = sain, fFeu = enFeu, fBrule = brule;
+final double taux = ...;
+Platform.runLater(() -> {
+    lblSain.setText("Sains : " + fSain);
+    // ...
+});
+```
+
+Les variables `final` dans le lambda évitent de capturer des variables mutables.
+
+#### `reset()`
+
+Remet tous les labels à leur état initial (`—`). Appelé depuis le thread JavaFX lors d'un clic sur Réinitialiser.
+
+---
+
+### 5.4 `ChartView`
+
+**Rôle :** graphique d'évolution temporelle dessiné sur un `Canvas` sans dépendance à `javafx.charts` (non disponible sur Maven Central pour JavaFX 21).
+
+Trois courbes sont tracées :
+
+| Courbe  | Couleur           |
+| ------- | ----------------- |
+| Sains   | Vert (`#228B22`)  |
+| En feu  | Rouge (`#FF4500`) |
+| Brûlés  | Gris (`#888888`)  |
+
+#### Fenêtre glissante
+
+`MAX_POINTS = 300` : au-delà de 300 ticks, le point le plus ancien est supprimé. Cela maintient une fenêtre glissante et évite la dégradation des performances sur les longues simulations.
+
+#### Rendu
+
+Le rendu est découpé en méthodes privées :
+
+- **`drawAxes()`** : axe Y (vertical) et axe X (horizontal) + titre.
+- **`drawSeries()`** : polyligne pour une série, normalisée par rapport au nombre total de cellules.
+- **`drawLegend()` / `drawLegendEntry()`** : légende colorée en haut à droite.
+
+#### `clear()`
+
+Vide les trois listes de données et redessine le graphique vide. Appelé depuis le thread JavaFX lors d'un reset.
+
+---
+
+### 5.5 `MainWindow`
+
+**Rôle :** fenêtre principale JavaFX. Assemble les trois vues dans un `BorderPane`, gère les boutons de contrôle et implémente la navigation interactive (zoom, déplacement).
+
+#### Mise en page
+
+```
+┌──────────────────────────┬──────────────┐
+│                          │  Contrôles   │
+│       GridView           │  Statistiques│
+│    (zone centrale)       │  ChartView   │
+│                          │              │
+└──────────────────────────┴──────────────┘
+```
+
+La zone centrale contient un `Pane` avec clip (pour masquer le débordement) et le `GridView`. Le panneau droit est une `VBox` de largeur fixe 300 px.
+
+#### Zoom (molette)
+
+Le zoom est centré sur la position du curseur grâce à la formule de pivot :
+
+```java
+Bounds b      = gridView.getBoundsInParent();
+double pivotX = e.getX() - (b.getMinX() + b.getWidth()  / 2.0);
+double pivotY = e.getY() - (b.getMinY() + b.getHeight() / 2.0);
+
+gridView.setScaleX(newScale);
+gridView.setScaleY(newScale);
+gridView.setTranslateX(gridView.getTranslateX() + pivotX * (1 - ratio));
+gridView.setTranslateY(gridView.getTranslateY() + pivotY * (1 - ratio));
+```
+
+Plage : ×0.2 – ×8.0, facteur 1.15 par cran de molette.
+
+#### Déplacement (clic-glisser)
+
+Les origines sont mémorisées à `mousePressed` et la translation est mise à jour en temps réel à `mouseDragged`. Le curseur visuel passe de `OPEN_HAND` à `CLOSED_HAND` pendant le drag.
+
+#### Réinitialisation de la vue
+
+`resetView()` remet `scaleX/Y` à 1.0 et `translateX/Y` à 0.0. Déclenché par double-clic sur la grille ou par le bouton Réinitialiser.
+
+#### Listener d'arrêt automatique
+
+Un `SimulationListener` anonyme (`stoppingListener()`) vérifie après chaque tick s'il reste des cellules `EN_FEU`. Quand le feu est éteint, il appelle `controller.stop()` et remet les boutons en état idle via `Platform.runLater`.
+
+#### Gestion des boutons
+
+| Bouton        | État `idle`  | État `running` |
+| ------------- | :----------: | :------------: |
+| Démarrer      | activé       | désactivé      |
+| Pause         | désactivé    | activé         |
+| Pas à pas     | activé       | désactivé      |
+| Réinitialiser | toujours actif                |
+
+#### CSS
+
+Le style sombre est défini dans `src/main/resources/com/simcel/style.css`. Classes utilisées :
+
+- `.root` : fond global `#1a1a2e`
+- `.right-panel` : fond du panneau droit `#12122a`
+- `.grid-pane` : fond de la zone grille `#0f0f1e`
+- `.label-title` : titre de section en gras
+- `.button`, `.button:hover`, `.button:pressed`, `.button:disabled` : états visuels des boutons
+
+---
+
 ## 6. Point d'entrée (`Main`)
 
 ```java
@@ -394,9 +583,27 @@ public class Main extends Application {
 }
 ```
 
+### Mode graphique (`start`)
+
+```java
+@Override
+public void start(Stage primaryStage) {
+    Grid grid = new Grid(50, 30);
+    grid.initRandom(0.6, 0.2, 0.1, 0.05, 0.05);
+    grid.setFire(25, 15);
+    grid.saveInitialState();   // mémorise le foyer pour le reset
+
+    Environment env           = new Environment();
+    FireSimulator simulator   = new FireSimulator(grid, env);
+    SimulationController ctrl = new SimulationController(simulator, 200);
+
+    new MainWindow(simulator, ctrl).show(primaryStage);
+}
+```
+
 ### Mode console (`runCLI`)
 
-1. **Parsing des arguments** : les flags `--width`, `--height`, `--ticks`, `--delay` sont lus avec un pattern `args[++i]` pour sauter proprement la valeur après chaque flag.
+1. **Parsing des arguments** : les flags `--width`, `--height`, `--ticks`, `--delay`, `--wind-direction`, `--wind-strength`, `--humidity` sont lus avec un pattern `args[++i]` pour sauter proprement la valeur après chaque flag.
 2. **Initialisation** : création de la grille, de l'environnement, du simulateur, du contrôleur et de la vue.
 3. **Listener d'arrêt** : un `SimulationListener` anonyme décrémente un `CountDownLatch` quand le nombre maximum de ticks est atteint ou qu'il n'y a plus de feu actif.
 4. **Synchronisation** : le thread principal appelle `done.await()` et bloque jusqu'à ce que le listener décrépite le latch.
@@ -408,7 +615,39 @@ Méthode utilitaire qui parcourt la grille et retourne `true` dès qu'une cellul
 
 ---
 
-## 7. Configuration du module (`module-info.java`)
+## 7. Scripts de lancement (`launchers/`)
+
+Deux scripts shell facilitent la compilation et le lancement sans configuration IDE.
+
+### `run-cli.sh`
+
+```bash
+./launchers/run-cli.sh [options]
+```
+
+| Option              | Défaut | Description                              |
+| ------------------- | :----: | ---------------------------------------- |
+| `--width W`         |   40   | Largeur de la grille                     |
+| `--height H`        |   20   | Hauteur de la grille                     |
+| `--ticks T`         |  100   | Nombre maximum de ticks                  |
+| `--delay D`         |  200   | Délai entre ticks (ms)                   |
+| `--wind-direction D`|   N    | Direction du vent (N NE E SE S SO O NO)  |
+| `--wind-strength S` |    0   | Force du vent `[0..5]`                   |
+| `--humidity H`      |    0   | Taux d'humidité `[0..100]`               |
+
+### `run-gui.sh`
+
+```bash
+./launchers/run-gui.sh
+```
+
+Lance la compilation Maven (`mvn compile -q`) puis démarre l'interface graphique JavaFX (`mvn exec:java -q`). Aucun argument n'est supporté : la configuration initiale est codée dans `Main.start()`.
+
+Les deux scripts se placent automatiquement à la racine du projet via `cd "$(dirname "$0")/.."` pour que Maven trouve le `pom.xml`.
+
+---
+
+## 8. Configuration du module (`module-info.java`)
 
 ```java
 module com.simcel {
@@ -428,7 +667,7 @@ Définit `com.simcel` comme un **module Java nommé** (JPMS, Java 9+).
 
 | Directive                         | Rôle                                                           |
 | --------------------------------- | -------------------------------------------------------------- |
-| `requires javafx.controls`        | Accès aux composants UI JavaFX (Button, Label…)                |
+| `requires javafx.controls`        | Accès aux composants UI JavaFX (Button, Label, Canvas…)        |
 | `requires javafx.fxml`            | Accès au chargeur de fichiers `.fxml`                          |
 | `opens com.simcel to javafx.fxml` | Autorise JavaFX à instancier les contrôleurs par **réflexion** |
 | `exports com.simcel`              | Rend le package accessible aux autres modules                  |
@@ -440,7 +679,7 @@ Sans `opens`, JavaFX ne pourrait pas instancier `Main` (ni les futurs contrôleu
 
 ---
 
-## 8. Algorithme de simulation pas à pas
+## 9. Algorithme de simulation pas à pas
 
 Voici ce qui se passe concrètement lors d'un appel à `FireSimulator.tick()` :
 
@@ -475,36 +714,37 @@ Voici ce qui se passe concrètement lors d'un appel à `FireSimulator.tick()` :
 
 ---
 
-## 9. Diagramme des dépendances entre classes
+## 10. Diagramme des dépendances entre classes
 
 ```
                     ┌──────────────┐
                     │    Main      │
                     └──────┬───────┘
                            │ crée
-          ┌────────────────┼────────────────┐
-          ▼                ▼                ▼
-  ┌──────────────┐  ┌────────────┐  ┌────────────┐
-  │SimulationCtrl│  │FireSimulat.│  │ConsoleView │
-  └──────┬───────┘  └─────┬──────┘  └─────┬──────┘
-         │ pilote          │ lit/écrit      │ lit
-         └────────────────►│               │
-                    ┌──────▼──────┐        │
-                    │    Grid     │◄───────┘
-                    └──────┬──────┘
-                           │ contient
-                    ┌──────▼──────┐
-                    │    Cell     │
-                    └──────┬──────┘
-                           │ a un
-              ┌────────────┼────────────┐
-              ▼                         ▼
-        ┌─────────┐               ┌──────────┐
-        │CellState│               │CellType  │
-        └─────────┘               └──────────┘
+          ┌────────────────┼──────────────────────┐
+          ▼                ▼                      ▼
+  ┌──────────────┐  ┌────────────┐        ┌─────────────┐
+  │SimulationCtrl│  │FireSimulat.│        │ MainWindow  │
+  └──────┬───────┘  └─────┬──────┘        └──────┬──────┘
+         │ pilote          │ lit/écrit            │ crée
+         └────────────────►│              ┌───────┼───────┐
+                    ┌──────▼──────┐       ▼       ▼       ▼
+                    │    Grid     │  GridView StatPanel ChartView
+                    └──────┬──────┘       │       │       │
+                           │ contient     └───────┴───────┘
+                    ┌──────▼──────┐         implémentent
+                    │    Cell     │       SimulationListener
+                    └──────┬──────┘              ▲
+                           │ a un                │
+              ┌────────────┼──────────┐    FireSimulator
+              ▼                      ▼    (notifie via addListener)
+        ┌─────────┐            ┌──────────┐
+        │CellState│            │CellType  │
+        └─────────┘            └──────────┘
 
-  FireSimulator ──► Environment (lit les conditions météo)
-  Environment   ──► WindDirection (direction du vent)
+  FireSimulator  ──► Environment   (lit les conditions météo)
+  Environment    ──► WindDirection (direction du vent)
   SimulationCtrl ──► SimulationState (état du cycle de vie)
-  FireSimulator ──► SimulationListener (notifie les observateurs)
+
+  ConsoleView implémente aussi SimulationListener (mode headless uniquement)
 ```
