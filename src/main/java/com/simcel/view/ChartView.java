@@ -76,6 +76,10 @@ public class ChartView extends Canvas implements SimulationListener {
         });
     }
 
+    /**
+     * Aucune action requise à la fin de simulation : le graphique conserve
+     * les courbes du dernier tick.
+     */
     @Override
     public void onSimulationEnd() {}
 
@@ -91,7 +95,13 @@ public class ChartView extends Canvas implements SimulationListener {
     }
 
     // -------------------------------------------------------------------------
+    // Rendu interne
+    // -------------------------------------------------------------------------
 
+    /**
+     * Ajoute un point aux trois séries. Si la fenêtre glissante est atteinte
+     * ({@link #MAX_POINTS}), le point le plus ancien est supprimé.
+     */
     private void addPoint(int sain, int feu, int brule) {
         dataSain.add(sain);
         dataFeu.add(feu);
@@ -103,6 +113,7 @@ public class ChartView extends Canvas implements SimulationListener {
         }
     }
 
+    /** Dessine le fond et les axes sans aucune donnée (état initial ou après {@link #clear()}). */
     private void drawEmpty() {
         GraphicsContext gc = getGraphicsContext2D();
         gc.setFill(Color.web("#1a1a2e"));
@@ -111,6 +122,7 @@ public class ChartView extends Canvas implements SimulationListener {
         drawLegend(gc);
     }
 
+    /** Efface le canvas et redessine axes, courbes et légende à partir des données courantes. */
     private void redraw() {
         GraphicsContext gc = getGraphicsContext2D();
         double w = getWidth();
@@ -134,6 +146,16 @@ public class ChartView extends Canvas implements SimulationListener {
         drawLegend(gc);
     }
 
+    /**
+     * Trace une série de données comme une polyligne colorée.
+     *
+     * @param gc    contexte graphique
+     * @param data  valeurs à tracer
+     * @param n     nombre de points
+     * @param plotW largeur de la zone de tracé (hors padding)
+     * @param plotH hauteur de la zone de tracé (hors padding)
+     * @param color couleur de la courbe
+     */
     private void drawSeries(GraphicsContext gc, List<Integer> data,
                             int n, double plotW, double plotH, Color color) {
         gc.setStroke(color);
@@ -148,6 +170,7 @@ public class ChartView extends Canvas implements SimulationListener {
         gc.stroke();
     }
 
+    /** Dessine l'axe vertical et l'axe horizontal ainsi que le titre du graphique. */
     private void drawAxes(GraphicsContext gc) {
         double w = getWidth();
         double h = getHeight();
@@ -161,6 +184,7 @@ public class ChartView extends Canvas implements SimulationListener {
         gc.fillText("Évolution temporelle", PADDING, PADDING - 8);
     }
 
+    /** Dessine la légende des trois séries en haut à droite du graphique. */
     private void drawLegend(GraphicsContext gc) {
         double x = getWidth() - PADDING - 80;
         double y = PADDING + 10;
@@ -170,6 +194,15 @@ public class ChartView extends Canvas implements SimulationListener {
         drawLegendEntry(gc, x, y + 28, COLOR_BRULE, "Brûlés");
     }
 
+    /**
+     * Dessine une entrée de légende (carré coloré + libellé).
+     *
+     * @param gc    contexte graphique
+     * @param x     abscisse de l'entrée
+     * @param y     ordonnée de l'entrée
+     * @param color couleur du carré
+     * @param label texte affiché à droite du carré
+     */
     private void drawLegendEntry(GraphicsContext gc, double x, double y,
                                  Color color, String label) {
         gc.setFill(color);
