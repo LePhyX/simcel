@@ -82,6 +82,13 @@
     -fx-background-color: #0f0f1e;
 }
 
+/* ---------- Barre de légende ---------- */
+.legend-bar {
+    -fx-background-color: #12122a;
+    -fx-border-color: #2a2a4a;
+    -fx-border-width: 0 0 1 0;
+}
+
 /* ---------- Mode édition ---------- */
 .edit-toggle {
     -fx-background-color: #2d2d55;
