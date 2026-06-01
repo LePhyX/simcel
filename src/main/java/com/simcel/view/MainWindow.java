@@ -1,7 +1,9 @@
 package com.simcel.view;
 
 import com.simcel.controller.SimulationController;
+import com.simcel.model.Cell;
 import com.simcel.model.CellState;
+import com.simcel.model.CellType;
 import com.simcel.model.Environment;
 import com.simcel.model.FireSimulator;
 import com.simcel.model.Grid;
@@ -9,15 +11,19 @@ import com.simcel.model.SimulationListener;
 import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
+import javafx.geometry.Point2D;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
@@ -32,6 +38,11 @@ import javafx.stage.Stage;
  * <p>La zone de grille supporte le <b>zoom</b> (molette de défilement, centré
  * sur le curseur) et le <b>déplacement</b> (clic-glisser). Un double-clic
  * réinitialise la vue à son état par défaut.</p>
+ *
+ * <p>Un <b>mode édition</b> permet de peindre le terrain et de placer des
+ * foyers interactivement : le clic ou le glisser sur la grille modifie les
+ * cellules selon l'outil sélectionné. L'état résultant devient le nouvel
+ * état initial (utilisé par le bouton Réinitialiser).</p>
  */
 public class MainWindow {
 
@@ -42,6 +53,65 @@ public class MainWindow {
     private static final double ZOOM_FACTOR = 1.15;
     private static final double MIN_SCALE   = 0.2;
     private static final double MAX_SCALE   = 8.0;
+
+    // -------------------------------------------------------------------------
+    // Outils d'édition
+    // -------------------------------------------------------------------------
+
+    /**
+     * Outil de peinture sélectionnable dans le mode édition.
+     *
+     * <p>Chaque outil connaît son libellé, sa couleur de bouton et sait
+     * créer la {@link Cell} correspondante via {@link #createCell()}.</p>
+     */
+    private enum EditTool {
+        FORET        ("Forêt",    CellType.FORET.getHealthyColor(),        "white"),
+        PRAIRIE      ("Prairie",  CellType.PRAIRIE.getHealthyColor(),      "white"),
+        BROUSSAILLES ("Brouss.",  CellType.BROUSSAILLES.getHealthyColor(), "white"),
+        ZONE_HUMIDE  ("Humide",   CellType.ZONE_HUMIDE.getHealthyColor(),  "white"),
+        ZONE_URBAINE ("Urbain",   CellType.ZONE_URBAINE.getHealthyColor(), "white"),
+        VIDE         ("Effacer",  CellState.VIDE.getColor(),               "black"),
+        EAU          ("Eau",      CellState.EAU.getColor(),                "white"),
+        ROCHER       ("Rocher",   CellState.ROCHER.getColor(),             "black"),
+        FOYER        ("Foyer 🔥", CellState.EN_FEU.getColor(),             "white");
+
+        final String label, bgColor, fgColor;
+
+        EditTool(String label, String bgColor, String fgColor) {
+            this.label   = label;
+            this.bgColor = bgColor;
+            this.fgColor = fgColor;
+        }
+
+        /**
+         * Crée la cellule à placer dans la grille.
+         * Retourne {@code null} pour {@link #FOYER} (cas traité séparément).
+         */
+        Cell createCell() {
+            return switch (this) {
+                case FORET        -> new Cell(CellType.FORET);
+                case PRAIRIE      -> new Cell(CellType.PRAIRIE);
+                case BROUSSAILLES -> new Cell(CellType.BROUSSAILLES);
+                case ZONE_HUMIDE  -> new Cell(CellType.ZONE_HUMIDE);
+                case ZONE_URBAINE -> new Cell(CellType.ZONE_URBAINE);
+                case VIDE   -> { Cell c = new Cell(CellType.PRAIRIE); c.setState(CellState.VIDE);   yield c; }
+                case EAU    -> { Cell c = new Cell(CellType.PRAIRIE); c.setState(CellState.EAU);    yield c; }
+                case ROCHER -> { Cell c = new Cell(CellType.PRAIRIE); c.setState(CellState.ROCHER); yield c; }
+                case FOYER  -> null;
+            };
+        }
+    }
+
+    private boolean      editMode     = false;
+    private EditTool     selectedTool = EditTool.FOYER;
+    private VBox         editToolsBox;
+    private ToggleButton btnEditToggle;
+    /** Référence conservée pour changer le curseur lors du basculement de mode. */
+    private Pane         gridPane;
+
+    // -------------------------------------------------------------------------
+    // Composants principaux
+    // -------------------------------------------------------------------------
 
     private final FireSimulator        simulator;
     private final SimulationController controller;
@@ -106,36 +176,35 @@ public class MainWindow {
     }
 
     // -------------------------------------------------------------------------
-    // Zone grille avec zoom et déplacement
+    // Zone grille : zoom, déplacement et édition
     // -------------------------------------------------------------------------
 
     /**
-     * Construit le conteneur de la grille et y attache les handlers de zoom
-     * et de déplacement.
+     * Construit le conteneur de la grille et y attache les handlers de zoom,
+     * déplacement et édition.
      *
      * <ul>
-     *   <li>Molette : zoom centré sur le curseur.</li>
-     *   <li>Clic-glisser : déplacement libre.</li>
-     *   <li>Double-clic : réinitialisation de la vue.</li>
+     *   <li>Molette : zoom centré sur le curseur (tous modes).</li>
+     *   <li>Mode navigation — Clic-glisser : déplacement ; double-clic : reset vue.</li>
+     *   <li>Mode édition — Clic/glisser : peinture de cellules.</li>
      * </ul>
      */
     private Pane buildGridPane() {
-        Pane pane = new Pane(gridView);
-        pane.getStyleClass().add("grid-pane");
-        pane.setPrefSize(gridView.getWidth(), gridView.getHeight());
+        gridPane = new Pane(gridView);
+        gridPane.getStyleClass().add("grid-pane");
+        gridPane.setPrefSize(gridView.getWidth(), gridView.getHeight());
 
-        // Masquer le rendu hors des bords du conteneur
         Rectangle clip = new Rectangle();
-        clip.widthProperty().bind(pane.widthProperty());
-        clip.heightProperty().bind(pane.heightProperty());
-        pane.setClip(clip);
+        clip.widthProperty().bind(gridPane.widthProperty());
+        clip.heightProperty().bind(gridPane.heightProperty());
+        gridPane.setClip(clip);
 
-        pane.setCursor(Cursor.OPEN_HAND);
+        gridPane.setCursor(Cursor.OPEN_HAND);
 
-        attachZoom(pane);
-        attachPan(pane);
+        attachZoom(gridPane);
+        attachPan(gridPane);
 
-        return pane;
+        return gridPane;
     }
 
     /**
@@ -156,7 +225,6 @@ public class MainWindow {
             double newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, oldScale * factor));
             double ratio    = newScale / oldScale;
 
-            // Pivot sur la position du curseur dans le repère du conteneur
             Bounds b      = gridView.getBoundsInParent();
             double pivotX = e.getX() - (b.getMinX() + b.getWidth()  / 2.0);
             double pivotY = e.getY() - (b.getMinY() + b.getHeight() / 2.0);
@@ -171,8 +239,12 @@ public class MainWindow {
     }
 
     /**
-     * Attache les handlers de déplacement (clic-glisser) et de
-     * réinitialisation de la vue (double-clic) au panneau.
+     * Attache les handlers de déplacement/édition au panneau.
+     *
+     * <p>En mode navigation : clic-glisser déplace la grille, double-clic
+     * réinitialise la vue.</p>
+     * <p>En mode édition : clic et glisser peignent les cellules ; le relâché
+     * sauvegarde le nouvel état initial.</p>
      *
      * @param pane conteneur de la grille
      */
@@ -181,23 +253,76 @@ public class MainWindow {
         final double[] translateOrigin = {0, 0};
 
         pane.setOnMousePressed(e -> {
-            dragOrigin[0]      = e.getX();
-            dragOrigin[1]      = e.getY();
-            translateOrigin[0] = gridView.getTranslateX();
-            translateOrigin[1] = gridView.getTranslateY();
-            pane.setCursor(Cursor.CLOSED_HAND);
+            if (editMode) {
+                paintCellAt(e.getSceneX(), e.getSceneY());
+            } else {
+                dragOrigin[0]      = e.getX();
+                dragOrigin[1]      = e.getY();
+                translateOrigin[0] = gridView.getTranslateX();
+                translateOrigin[1] = gridView.getTranslateY();
+                pane.setCursor(Cursor.CLOSED_HAND);
+            }
         });
 
         pane.setOnMouseDragged(e -> {
-            gridView.setTranslateX(translateOrigin[0] + e.getX() - dragOrigin[0]);
-            gridView.setTranslateY(translateOrigin[1] + e.getY() - dragOrigin[1]);
+            if (editMode) {
+                paintCellAt(e.getSceneX(), e.getSceneY());
+            } else {
+                gridView.setTranslateX(translateOrigin[0] + e.getX() - dragOrigin[0]);
+                gridView.setTranslateY(translateOrigin[1] + e.getY() - dragOrigin[1]);
+            }
         });
 
-        pane.setOnMouseReleased(e -> pane.setCursor(Cursor.OPEN_HAND));
+        pane.setOnMouseReleased(e -> {
+            if (editMode) {
+                // Persist la peinture comme état initial pour le prochain Reset
+                grid.saveInitialState();
+            } else {
+                pane.setCursor(Cursor.OPEN_HAND);
+            }
+        });
 
         pane.setOnMouseClicked(e -> {
-            if (e.getClickCount() == 2) resetView();
+            if (!editMode && e.getClickCount() == 2) resetView();
         });
+    }
+
+    /**
+     * Peint la cellule sous les coordonnées scène données avec l'outil courant.
+     *
+     * <p>Convertit les coordonnées scène en coordonnées locales du canvas
+     * (en tenant compte du zoom et du déplacement), puis modifie la cellule
+     * et redessine la vue.</p>
+     *
+     * @param sceneX abscisse dans le repère scène
+     * @param sceneY ordonnée dans le repère scène
+     */
+    private void paintCellAt(double sceneX, double sceneY) {
+        Point2D local  = gridView.sceneToLocal(sceneX, sceneY);
+        int[]   coords = gridView.getCellAt(local.getX(), local.getY());
+        if (coords == null) return;
+        int x = coords[0], y = coords[1];
+        if (selectedTool == EditTool.FOYER) {
+            // Crée une prairie saine puis l'enflamme, quelle que soit la cellule existante
+            Cell c = new Cell(CellType.PRAIRIE);
+            grid.setCell(x, y, c);
+            grid.setFire(x, y);
+        } else {
+            grid.setCell(x, y, selectedTool.createCell());
+        }
+        gridView.refresh(grid);
+    }
+
+    /**
+     * Active ou désactive le mode édition.
+     *
+     * @param on {@code true} pour activer le mode édition
+     */
+    private void toggleEditMode(boolean on) {
+        editMode = on;
+        editToolsBox.setVisible(on);
+        editToolsBox.setManaged(on);
+        gridPane.setCursor(on ? Cursor.CROSSHAIR : Cursor.OPEN_HAND);
     }
 
     /**
@@ -246,6 +371,7 @@ public class MainWindow {
         btnPause.setDisable(true);
         btnStep.setDisable(false);
         btnStepBack.setDisable(false);
+        if (btnEditToggle != null) btnEditToggle.setDisable(false);
     }
 
     private void setRunningState() {
@@ -253,6 +379,13 @@ public class MainWindow {
         btnPause.setDisable(false);
         btnStep.setDisable(true);
         btnStepBack.setDisable(true);
+        if (btnEditToggle != null) {
+            if (editMode) {
+                btnEditToggle.setSelected(false);
+                toggleEditMode(false);
+            }
+            btnEditToggle.setDisable(true);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -311,10 +444,58 @@ public class MainWindow {
 
         HBox legendRow = new HBox(8, legendPanel, windIndicator);
 
-        VBox right = new VBox(8, controls, statisticsPanel, chartView, legendRow);
+        VBox right = new VBox(8, controls, buildEditSection(), statisticsPanel, chartView, legendRow);
         right.getStyleClass().add("right-panel");
         right.setPadding(new Insets(8));
         right.setPrefWidth(RIGHT_WIDTH);
         return right;
+    }
+
+    /**
+     * Construit la section « Edition du terrain » du panneau droit.
+     *
+     * <p>Elle comprend un bouton bascule pour activer/désactiver le mode
+     * édition, et une palette de 9 outils (5 types de terrain + Vide, Eau,
+     * Rocher, Foyer) affichée uniquement quand le mode est actif.</p>
+     */
+    private VBox buildEditSection() {
+        btnEditToggle = new ToggleButton("✏  Mode édition");
+        btnEditToggle.setMaxWidth(Double.MAX_VALUE);
+        btnEditToggle.getStyleClass().add("edit-toggle");
+        btnEditToggle.setOnAction(e -> toggleEditMode(btnEditToggle.isSelected()));
+
+        ToggleGroup toolGroup = new ToggleGroup();
+        TilePane toolTile = new TilePane(4, 4);
+        toolTile.setPrefColumns(3);
+
+        for (EditTool tool : EditTool.values()) {
+            String base     = "-fx-background-color:" + tool.bgColor
+                            + "; -fx-text-fill:" + tool.fgColor + ";";
+            String selected = base + "-fx-border-color:white; -fx-border-width:2;"
+                            + "-fx-border-radius:4;";
+
+            ToggleButton btn = new ToggleButton(tool.label);
+            btn.setToggleGroup(toolGroup);
+            btn.getStyleClass().add("tool-btn");
+            btn.setMaxWidth(Double.MAX_VALUE);
+            btn.setStyle(tool == EditTool.FOYER ? selected : base);
+            btn.setOnAction(e -> selectedTool = tool);
+            btn.selectedProperty().addListener((obs, old, sel) ->
+                    btn.setStyle(sel ? selected : base));
+            if (tool == EditTool.FOYER) btn.setSelected(true);
+            toolTile.getChildren().add(btn);
+        }
+
+        Label hint = new Label("Cliquer ou glisser pour peindre");
+        hint.getStyleClass().add("label-hint");
+
+        editToolsBox = new VBox(4, toolTile, hint);
+        editToolsBox.setVisible(false);
+        editToolsBox.setManaged(false);
+
+        Label titleEdit = new Label("Edition du terrain");
+        titleEdit.getStyleClass().add("label-title");
+
+        return new VBox(6, new Separator(), titleEdit, btnEditToggle, editToolsBox);
     }
 }
