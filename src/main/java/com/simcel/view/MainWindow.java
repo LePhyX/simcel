@@ -446,65 +446,11 @@ public class MainWindow {
 
         HBox legendRow = new HBox(8, legendPanel, windIndicator);
 
-        VBox right = new VBox(8, controls, buildEnvSection(), buildEditSection(), statisticsPanel, chartView, legendRow);
+        VBox right = new VBox(8, controls, buildEditSection(), statisticsPanel, chartView, legendRow);
         right.getStyleClass().add("right-panel");
         right.setPadding(new Insets(8));
         right.setPrefWidth(RIGHT_WIDTH);
         return right;
-    }
-
-    /**
-     * Construit la section « Paramètres météo » du panneau droit.
-     *
-     * <p>Contient un menu déroulant pour la direction du vent, un slider pour
-     * l'intensité (0–5) et un slider pour l'humidité (0–100). Chaque
-     * modification prend effet immédiatement et rafraîchit le WindIndicator.</p>
-     */
-    private VBox buildEnvSection() {
-        Environment env = simulator.getEnvironment();
-
-        Label lblDir = new Label("Direction du vent :");
-        ComboBox<WindDirection> cbDirection = new ComboBox<>();
-        cbDirection.getItems().addAll(WindDirection.values());
-        cbDirection.setValue(env.getDirection());
-        cbDirection.setMaxWidth(Double.MAX_VALUE);
-        cbDirection.setOnAction(e -> {
-            env.setDirection(cbDirection.getValue());
-            windIndicator.refresh(env);
-        });
-
-        Label lblStrength = new Label("Force du vent (0–5) :");
-        Slider sliderStrength = new Slider(0, 5, env.getWindStrength());
-        sliderStrength.setShowTickLabels(true);
-        sliderStrength.setShowTickMarks(true);
-        sliderStrength.setMajorTickUnit(1);
-        sliderStrength.setMinorTickCount(0);
-        sliderStrength.setSnapToTicks(true);
-        sliderStrength.valueProperty().addListener((obs, old, val) -> {
-            env.setWindStrength(val.intValue());
-            windIndicator.refresh(env);
-        });
-
-        Label lblHumidity = new Label("Humidité (0–100 %) :");
-        Slider sliderHumidity = new Slider(0, 100, env.getHumidity());
-        sliderHumidity.setShowTickLabels(true);
-        sliderHumidity.setShowTickMarks(true);
-        sliderHumidity.setMajorTickUnit(50);
-        sliderHumidity.valueProperty().addListener((obs, old, val) -> {
-            env.setHumidity(val.intValue());
-            windIndicator.refresh(env);
-        });
-
-        Label titleEnv = new Label("Paramètres météo");
-        titleEnv.getStyleClass().add("label-title");
-
-        VBox section = new VBox(6,
-                new Separator(), titleEnv,
-                lblDir, cbDirection,
-                lblStrength, sliderStrength,
-                lblHumidity, sliderHumidity);
-        section.setPadding(new Insets(0, 10, 0, 10));
-        return section;
     }
 
     /**
