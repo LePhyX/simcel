@@ -94,6 +94,18 @@ public class ChartView extends Canvas implements SimulationListener {
         drawEmpty();
     }
 
+    /**
+     * Supprime le dernier point de chaque série (utilisé lors d'un pas en arrière).
+     * Doit être appelé depuis le thread JavaFX.
+     */
+    public void removeLastPoint() {
+        if (dataSain.isEmpty()) return;
+        dataSain.remove(dataSain.size() - 1);
+        dataFeu.remove(dataFeu.size() - 1);
+        dataBrule.remove(dataBrule.size() - 1);
+        redraw();
+    }
+
     // -------------------------------------------------------------------------
     // Rendu interne
     // -------------------------------------------------------------------------
