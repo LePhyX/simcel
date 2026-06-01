@@ -137,7 +137,7 @@ public class SimulationController {
      */
     public synchronized void setTickDelay(int ms) {
         this.tickDelay = ms;
-        if (state == SimulationState.RUNNING) {
+        if (ms >= 1 && state == SimulationState.RUNNING) {
             shutdownExecutor();
             executor = Executors.newSingleThreadScheduledExecutor();
             executor.scheduleAtFixedRate(this::doTick, 0, ms, TimeUnit.MILLISECONDS);
