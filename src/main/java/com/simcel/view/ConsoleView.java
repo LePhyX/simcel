@@ -172,8 +172,9 @@ public class ConsoleView {
                     System.out.println("Valeur numérique attendue pour intensité");
                     return;
                 }
-                if (strength < 0 || strength > 5) {
-                    System.out.println("Intensité invalide. Valeurs acceptées : 0 à 5");
+                if (strength < Environment.MIN_WIND || strength > Environment.MAX_WIND) {
+                    System.out.println("Intensité invalide. Valeurs acceptées : "
+                            + Environment.MIN_WIND + " à " + Environment.MAX_WIND);
                     return;
                 }
                 env.setDirection(dir);
@@ -191,8 +192,9 @@ public class ConsoleView {
                     System.out.println("Valeur numérique attendue pour humidité");
                     return;
                 }
-                if (h < 0 || h > 100) {
-                    System.out.println("Humidité invalide. Valeurs acceptées : 0 à 100");
+                if (h < Environment.MIN_HUMIDITY || h > Environment.MAX_HUMIDITY) {
+                    System.out.println("Humidité invalide. Valeurs acceptées : "
+                            + Environment.MIN_HUMIDITY + " à " + Environment.MAX_HUMIDITY);
                     return;
                 }
                 env.setHumidity(h);

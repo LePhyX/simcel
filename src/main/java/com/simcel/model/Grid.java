@@ -18,6 +18,9 @@ import java.util.Random;
  */
 public class Grid {
 
+    /** Tolérance flottante pour la validation de la somme des densités. */
+    private static final double DENSITY_EPSILON = 1e-9;
+
     private final int width;
     private final int height;
     private final Cell[][] cells;
@@ -140,7 +143,7 @@ public class Grid {
             double densityUrbaine) {
         double sum = densityForest + densityPrairie + densityBroussailles
                 + densityHumide + densityUrbaine;
-        if (sum > 1.0 + 1e-9) {
+        if (sum > 1.0 + DENSITY_EPSILON) {
             throw new IllegalArgumentException(
                     "La somme des densités ne doit pas dépasser 1.0 (valeur reçue : " + sum + ")");
         }
