@@ -138,8 +138,13 @@ public class MainWindow {
      */
     private void attachZoom(Pane pane) {
         pane.setOnScroll(e -> {
+            // Sur certains drivers Linux, getDeltaY() vaut 0 pour un sens de molette ;
+            // on se rabat sur getTextDeltaY() (signe inverse) comme fallback.
+            double delta = e.getDeltaY() != 0 ? e.getDeltaY() : -e.getTextDeltaY();
+            if (delta == 0) { e.consume(); return; }
+
             double oldScale = gridView.getScaleX();
-            double factor   = e.getDeltaY() > 0 ? ZOOM_FACTOR : 1.0 / ZOOM_FACTOR;
+            double factor   = delta > 0 ? ZOOM_FACTOR : 1.0 / ZOOM_FACTOR;
             double newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, oldScale * factor));
             double ratio    = newScale / oldScale;
 
