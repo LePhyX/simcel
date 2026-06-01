@@ -19,7 +19,9 @@ package com.simcel.model;
  * respectives ; aucune exception n'est levée pour des valeurs hors bornes
  * (elles sont silencieusement ramenées au min/max).</p>
  */
-public class Environment {
+public class Environment implements java.io.Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private volatile WindDirection direction;
     private volatile int windStrength;

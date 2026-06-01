@@ -190,6 +190,39 @@ public class FireSimulator {
         history.clear();
     }
 
+    /**
+     * Creates a snapshot of the current simulation state.
+     *
+     * @return immutable snapshot capturing grid, environment and tick
+     */
+    public SimulationSnapshot createSnapshot() {
+        return new SimulationSnapshot(
+                grid.getWidth(), grid.getHeight(),
+                grid.copyCells(), grid.copyInitialCells(),
+                environment, currentTick);
+    }
+
+    /**
+     * Restores the simulation to a previously saved snapshot.
+     *
+     * <p>Clears the step-back history and notifies all listeners.</p>
+     *
+     * @param snapshot snapshot to restore, must match current grid dimensions
+     * @throws IllegalArgumentException if grid dimensions do not match
+     */
+    public void applySnapshot(SimulationSnapshot snapshot) {
+        if (snapshot.getWidth() != grid.getWidth() || snapshot.getHeight() != grid.getHeight()) {
+            throw new IllegalArgumentException("Snapshot grid dimensions do not match current grid");
+        }
+        grid.restoreState(snapshot.getCells(), snapshot.getInitialCells());
+        environment.setDirection(snapshot.getWindDirection());
+        environment.setWindStrength(snapshot.getWindStrength());
+        environment.setHumidity(snapshot.getHumidity());
+        currentTick = snapshot.getTick();
+        history.clear();
+        notifyListeners(currentTick);
+    }
+
     // -------------------------------------------------------------------------
     // Méthodes privées
     // -------------------------------------------------------------------------
