@@ -4,18 +4,20 @@ import com.simcel.model.Grid;
 import com.simcel.model.SimulationListener;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 
 /**
- * Panneau affichant les statistiques de la simulation en temps réel.
+ * Barre de statistiques horizontale affichée sous la grille.
  *
  * <p>Implémente {@link SimulationListener} : les comptages sont effectués sur
  * le thread de simulation, seule la mise à jour des labels est déléguée au
  * thread JavaFX via {@link Platform#runLater}.</p>
  */
-public class StatisticsPanel extends VBox implements SimulationListener {
+public class StatisticsPanel extends HBox implements SimulationListener {
 
     private final Label lblTick        = new Label("Tick : 0");
     private final Label lblSain        = new Label("Sains : —");
@@ -23,16 +25,23 @@ public class StatisticsPanel extends VBox implements SimulationListener {
     private final Label lblBrule       = new Label("Brûlés : —");
     private final Label lblDestruction = new Label("Destruction : —");
 
-    /** Crée le panneau avec ses labels initiaux. */
+    /** Crée la barre de statistiques. */
     public StatisticsPanel() {
-        super(6);
-        setPadding(new Insets(10));
+        super(12);
+        setPadding(new Insets(6, 14, 6, 14));
+        setAlignment(Pos.CENTER_LEFT);
+        getStyleClass().add("stats-bar");
 
-        Label title = new Label("Statistiques");
+        Label title = new Label("Statistiques :");
         title.getStyleClass().add("label-title");
 
-        getChildren().addAll(title, new Separator(),
-                lblTick, lblSain, lblFeu, lblBrule, lblDestruction);
+        getChildren().addAll(
+                title,
+                vSep(), lblTick,
+                vSep(), lblSain,
+                vSep(), lblFeu,
+                vSep(), lblBrule,
+                vSep(), lblDestruction);
     }
 
     /**
@@ -70,10 +79,6 @@ public class StatisticsPanel extends VBox implements SimulationListener {
         });
     }
 
-    /**
-     * Aucune action requise à la fin de simulation : les labels conservent
-     * les valeurs du dernier tick.
-     */
     @Override
     public void onSimulationEnd() {}
 
@@ -87,5 +92,11 @@ public class StatisticsPanel extends VBox implements SimulationListener {
         lblFeu.setText("En feu : —");
         lblBrule.setText("Brûlés : —");
         lblDestruction.setText("Destruction : —");
+    }
+
+    private static Separator vSep() {
+        Separator s = new Separator(Orientation.VERTICAL);
+        s.setMinHeight(20);
+        return s;
     }
 }
