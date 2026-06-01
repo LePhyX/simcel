@@ -33,7 +33,7 @@ public class ChartView extends Canvas implements SimulationListener {
     private final List<Integer> dataFeu   = new ArrayList<>();
     private final List<Integer> dataBrule = new ArrayList<>();
 
-    private int totalCells = 1;
+    private int observedMax = 1;
 
     /**
      * Crée le graphique avec les dimensions données.
@@ -56,7 +56,6 @@ public class ChartView extends Canvas implements SimulationListener {
     @Override
     public void onTick(int tick, Grid grid) {
         int sain = 0, enFeu = 0, brule = 0;
-        totalCells = grid.getWidth() * grid.getHeight();
 
         for (int y = 0; y < grid.getHeight(); y++) {
             for (int x = 0; x < grid.getWidth(); x++) {
@@ -91,6 +90,7 @@ public class ChartView extends Canvas implements SimulationListener {
         dataSain.clear();
         dataFeu.clear();
         dataBrule.clear();
+        observedMax = 1;
         drawEmpty();
     }
 
@@ -103,6 +103,7 @@ public class ChartView extends Canvas implements SimulationListener {
         dataSain.remove(dataSain.size() - 1);
         dataFeu.remove(dataFeu.size() - 1);
         dataBrule.remove(dataBrule.size() - 1);
+        recomputeObservedMax();
         redraw();
     }
 
@@ -118,11 +119,21 @@ public class ChartView extends Canvas implements SimulationListener {
         dataSain.add(sain);
         dataFeu.add(feu);
         dataBrule.add(brule);
+        observedMax = Math.max(observedMax, Math.max(sain, Math.max(feu, brule)));
         if (dataSain.size() > MAX_POINTS) {
             dataSain.remove(0);
             dataFeu.remove(0);
             dataBrule.remove(0);
+            recomputeObservedMax();
         }
+    }
+
+    private void recomputeObservedMax() {
+        int max = 1;
+        for (int i = 0; i < dataSain.size(); i++) {
+            max = Math.max(max, Math.max(dataSain.get(i), Math.max(dataFeu.get(i), dataBrule.get(i))));
+        }
+        observedMax = max;
     }
 
     /** Dessine le fond et les axes sans aucune donnée (état initial ou après {@link #clear()}). */
@@ -175,7 +186,7 @@ public class ChartView extends Canvas implements SimulationListener {
         gc.beginPath();
         for (int i = 0; i < n; i++) {
             double x = PADDING + i * plotW / (n - 1);
-            double y = PADDING + plotH - (data.get(i) * plotH / totalCells);
+            double y = PADDING + plotH - (data.get(i) * plotH / observedMax);
             if (i == 0) gc.moveTo(x, y);
             else        gc.lineTo(x, y);
         }
