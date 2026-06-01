@@ -1,6 +1,8 @@
 package com.simcel.model;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
@@ -28,10 +30,13 @@ import java.util.Set;
  */
 public class FireSimulator {
 
+    private static final int MAX_HISTORY = 100;
+
     private final Grid grid;
     private final Environment environment;
     private final List<SimulationListener> listeners;
     private final Random random;
+    private final Deque<Cell[][]> history = new ArrayDeque<>();
     private int currentTick;
 
     /**
@@ -57,6 +62,7 @@ public class FireSimulator {
      * rapport à l'ordre de parcours des cellules.</p>
      */
     public void tick() {
+        pushHistory();
         CellState[][] snapshot = takeSnapshot();
 
         Set<Cell> toIgnite = collectIgnitions(snapshot);
@@ -110,6 +116,15 @@ public class FireSimulator {
     }
 
     /**
+     * Retourne l'environnement météorologique associé à ce simulateur.
+     *
+     * @return environnement, jamais {@code null}
+     */
+    public Environment getEnvironment() {
+        return environment;
+    }
+
+    /**
      * Retourne le numéro du tick courant (0 avant le premier tick).
      *
      * @return tick courant, &ge; 0
@@ -136,9 +151,61 @@ public class FireSimulator {
         listeners.remove(listener);
     }
 
+    /**
+     * Recule la simulation d'un tick en restaurant l'état sauvegardé juste
+     * avant le dernier appel à {@link #tick()}.
+     *
+     * <p>Sans effet si l'historique est vide. Notifie les listeners après
+     * restauration pour que la vue se mette à jour.</p>
+     *
+     * @return {@code true} si un état précédent a été restauré
+     */
+    public boolean stepBack() {
+        if (history.isEmpty()) return false;
+        Cell[][] prev = history.pop();
+        int w = grid.getWidth();
+        int h = grid.getHeight();
+        for (int x = 0; x < w; x++)
+            for (int y = 0; y < h; y++)
+                grid.setCell(x, y, prev[x][y]);
+        if (currentTick > 0) currentTick--;
+        notifyListeners(currentTick);
+        return true;
+    }
+
+    /**
+     * Indique si au moins un état précédent est disponible pour {@link #stepBack()}.
+     *
+     * @return {@code true} si l'historique est non vide
+     */
+    public boolean canStepBack() {
+        return !history.isEmpty();
+    }
+
+    /**
+     * Vide l'historique des états sauvegardés.
+     * À appeler lors d'un reset pour éviter de revenir à des états pré-reset.
+     */
+    public void clearHistory() {
+        history.clear();
+    }
+
     // -------------------------------------------------------------------------
     // Méthodes privées
     // -------------------------------------------------------------------------
+
+    /** Sauvegarde l'état courant de la grille dans l'historique. */
+    private void pushHistory() {
+        int w = grid.getWidth();
+        int h = grid.getHeight();
+        Cell[][] snap = new Cell[w][h];
+        for (int x = 0; x < w; x++)
+            for (int y = 0; y < h; y++)
+                snap[x][y] = grid.getCell(x, y).copy();
+        history.push(snap);
+        if (history.size() > MAX_HISTORY) history.pollLast();
+    }
+
     /**
      * Capture les états actuels dans un tableau indépendant.
      */
