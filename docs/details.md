@@ -1,10 +1,10 @@
-# SimCel — Explication complète du code
+# SimCel — Documentation technique complète
 
 ## Table des matières
 
-1. [Vue d'ensemble du projet](#1-vue-densemble-du-projet)
-2. [Architecture générale](#2-architecture-générale)
-3. [Le modèle (`model/`)](#3-le-modèle-model)
+1. [Vue d'ensemble](#1-vue-densemble)
+2. [Architecture MVC](#2-architecture-mvc)
+3. [Modèle (`model/`)](#3-modèle-model)
    - [CellState](#31-cellstate)
    - [CellType](#32-celltype)
    - [Cell](#33-cell)
@@ -14,737 +14,552 @@
    - [FireSimulator](#37-firesimulator)
    - [SimulationListener](#38-simulationlistener)
    - [SimulationState](#39-simulationstate)
-4. [Le contrôleur (`controller/`)](#4-le-contrôleur-controller)
+   - [SimulationSnapshot](#310-simulationsnapshot)
+   - [SimulationIO](#311-simulationio)
+4. [Contrôleur (`controller/`)](#4-contrôleur-controller)
    - [SimulationController](#41-simulationcontroller)
-5. [La vue (`view/`)](#5-la-vue-view)
-   - [ConsoleView](#51-consoleview)
-   - [GridView](#52-gridview)
-   - [StatisticsPanel](#53-statisticspanel)
-   - [ChartView](#54-chartview)
-   - [MainWindow](#55-mainwindow)
+5. [Vue (`view/`)](#5-vue-view)
+   - [GridView](#51-gridview)
+   - [StatisticsPanel](#52-statisticspanel)
+   - [ChartView](#53-chartview)
+   - [LegendPanel](#54-legendpanel)
+   - [WindIndicator](#55-windindicator)
+   - [ConsoleView](#56-consoleview)
+   - [MainWindow](#57-mainwindow)
 6. [Point d'entrée (`Main`)](#6-point-dentrée-main)
-7. [Scripts de lancement (`launchers/`)](#7-scripts-de-lancement-launchers)
-8. [Configuration du module (`module-info.java`)](#8-configuration-du-module-module-infojava)
-9. [Algorithme de simulation pas à pas](#9-algorithme-de-simulation-pas-à-pas)
-10. [Diagramme des dépendances entre classes](#10-diagramme-des-dépendances-entre-classes)
+7. [Algorithme de simulation](#7-algorithme-de-simulation)
+8. [Import / Export](#8-import--export)
+9. [Diagramme des dépendances](#9-diagramme-des-dépendances)
+10. [Scripts de lancement](#10-scripts-de-lancement)
 
 ---
 
-## 1. Vue d'ensemble du projet
+## 1. Vue d'ensemble
 
-SimCel est une **simulation de propagation d'incendie** fondée sur le modèle des **automates cellulaires**. Le terrain est découpé en une grille 2D de cellules. À chaque pas de temps (tick), chaque cellule en feu tente de propager l'incendie à ses voisines selon une probabilité dépendant du type de terrain.
+**SimCel** est une simulation de propagation d'incendie basée sur les **automates cellulaires**.
+Le terrain est découpé en une grille 2D de cellules. À chaque pas de temps (*tick*), les cellules
+en feu tentent de propager l'incendie à leurs voisines selon une probabilité stochastique qui dépend
+du type de terrain, du vent et de l'humidité ambiante.
 
-Le projet propose deux modes de lancement :
+### Modes de lancement
 
-- **Mode console** (`--headless`) : animation textuelle ANSI dans le terminal.
-- **Mode graphique** (défaut) : interface JavaFX avec grille interactive, statistiques et graphique d'évolution.
+| Mode | Activation | Description |
+|------|-----------|-------------|
+| **Graphique** (défaut) | `./run-gui.sh` | Interface JavaFX complète avec grille interactive, graphiques et contrôles |
+| **Console** | `./run-headless.sh --headless` | Animation ANSI en terminal, paramétrable en ligne de commande |
 
 ---
 
-## 2. Architecture générale
+## 2. Architecture MVC
 
-Le projet suit le patron **MVC (Modèle - Vue - Contrôleur)** :
+Le projet suit strictement le patron **Modèle – Vue – Contrôleur** :
 
 ```
 com.simcel
-│
-├── model/          ← Données et logique métier (automate cellulaire)
-│   ├── CellState        État d'une cellule (SAIN, EN_FEU, BRULE…)
-│   ├── CellType         Type de terrain (FORET, PRAIRIE…)
-│   ├── Cell             Unité élémentaire de la grille
-│   ├── WindDirection    Direction du vent (N, NE, E…)
-│   ├── Environment      Conditions météo (vent, humidité)
-│   ├── Grid             Grille 2D de cellules
-│   ├── FireSimulator    Moteur de simulation (algorithme tick)
-│   ├── SimulationListener  Interface Observer
-│   └── SimulationState  État du cycle de vie (IDLE, RUNNING, PAUSED)
-│
-├── controller/     ← Pilotage de la boucle de simulation
-│   └── SimulationController   Démarre, pause, arrête la simulation
-│
-├── view/           ← Affichage
-│   ├── ConsoleView      Vue console ANSI (mode headless)
-│   ├── GridView         Canvas JavaFX de la grille (mode graphique)
-│   ├── StatisticsPanel  Panneau de statistiques en temps réel
-│   ├── ChartView        Graphique d'évolution temporelle (Canvas custom)
-│   └── MainWindow       Fenêtre principale JavaFX, zoom et déplacement
-│
-└── Main            ← Point d'entrée (JavaFX ou CLI)
+├── model/          ← Logique métier pure (aucune dépendance JavaFX)
+│   ├── Cell, CellState, CellType
+│   ├── WindDirection, Environment
+│   ├── Grid, FireSimulator
+│   ├── SimulationListener, SimulationState
+│   ├── SimulationSnapshot, SimulationIO
+├── controller/
+│   └── SimulationController
+├── view/           ← Composants JavaFX + ConsoleView ANSI
+│   ├── GridView, StatisticsPanel, ChartView
+│   ├── LegendPanel, WindIndicator
+│   ├── ConsoleView, MainWindow
+└── Main.java       ← Point d'entrée (JavaFX Application)
 ```
 
-Le **modèle** ne connaît ni la vue ni le contrôleur.
-La **vue** ne connaît que le modèle (lecture seule).
-Le **contrôleur** orchestre le modèle et notifie la vue via le patron **Observer**.
-
----
-
-## 3. Le modèle (`model/`)
-
-### 3.1 `CellState`
-
-```java
-public enum CellState {
-    VIDE, SAIN, EN_FEU, BRULE, EAU, ROCHER
-}
+**Flux de données :**
 ```
-
-**Rôle :** représente l'état courant d'une cellule.
-
-| Constante | Signification                 | Inflammable ? | Propage le feu ? |
-| --------- | ----------------------------- | :-----------: | :--------------: |
-| `VIDE`    | Terrain vide, sans végétation |      Non      |       Non        |
-| `SAIN`    | Végétation saine              |    **Oui**    |       Non        |
-| `EN_FEU`  | En combustion                 |      Non      |     **Oui**      |
-| `BRULE`   | Entièrement consumé           |      Non      |       Non        |
-| `EAU`     | Plan d'eau (ignifuge)         |      Non      |       Non        |
-| `ROCHER`  | Roche (ignifuge)              |      Non      |       Non        |
-
-Chaque constante porte :
-
-- `color` : couleur hexadécimale pour l'interface graphique.
-- `isFlammable()` : retourne `true` uniquement pour `SAIN`.
-- `isSpreading()` : retourne `true` uniquement pour `EN_FEU`.
-
----
-
-### 3.2 `CellType`
-
-```java
-public enum CellType {
-    FORET(0.7, 8), PRAIRIE(0.9, 3), BROUSSAILLES(0.5, 5),
-    ZONE_HUMIDE(0.2, 12), ZONE_URBAINE(0.3, 6)
-}
-```
-
-**Rôle :** représente le **type de terrain** d'une cellule. Contrairement à `CellState`, le type ne change jamais au cours de la simulation.
-
-Chaque type porte deux paramètres physiques :
-
-| Type           | Inflammabilité | Durée de combustion |
-| -------------- | :------------: | :-----------------: |
-| `FORET`        |      70 %      |       8 ticks       |
-| `PRAIRIE`      |      90 %      |       3 ticks       |
-| `BROUSSAILLES` |      50 %      |       5 ticks       |
-| `ZONE_HUMIDE`  |      20 %      |      12 ticks       |
-| `ZONE_URBAINE` |      30 %      |       6 ticks       |
-
-- **`inflammability`** : probabilité de base que cette cellule s'enflamme quand un voisin brûle.
-- **`burnDuration`** : nombre de ticks avant extinction complète une fois en feu.
-
----
-
-### 3.3 `Cell`
-
-```java
-public class Cell {
-    private CellState state;          // état courant (mutable)
-    private final CellType type;      // type de terrain (immuable)
-    private int remainingBurnTime;    // ticks de combustion restants
-}
-```
-
-**Rôle :** unité élémentaire de la grille. C'est l'objet central de la simulation.
-
-**Méthodes importantes :**
-
-- **`ignite()`** : enflamme la cellule si elle est `SAIN`. Réinitialise `remainingBurnTime` à la valeur par défaut du type.
-- **`decrementBurnTime()`** : décrémente le compteur à chaque tick (jamais en dessous de 0).
-- **`burnOut()`** : marque la cellule comme `BRULE` et remet le compteur à 0.
-- **`copy()`** : crée une copie profonde utilisée pour la sauvegarde de l'état initial et le double buffering.
-
-**Cycle de vie d'une cellule :**
-
-```
-SAIN ──ignite()──► EN_FEU ──burnOut()──► BRULE
+FireSimulator.tick()
+    └─► notifyListeners(tick, grid)
+            ├─► GridView.onTick()       → redessine la grille (Platform.runLater)
+            ├─► StatisticsPanel.onTick() → met à jour les compteurs
+            └─► ChartView.onTick()      → ajoute un point aux courbes
 ```
 
 ---
 
-### 3.4 `WindDirection`
+## 3. Modèle (`model/`)
 
-```java
-public enum WindDirection {
-    N(0,-1), NE(1,-1), E(1,0), SE(1,1),
-    S(0,1), SO(-1,1), O(-1,0), NO(-1,-1)
-}
-```
+### 3.1 CellState
 
-**Rôle :** encode les 8 directions cardinales et inter-cardinales du vent sous forme de vecteurs unitaires `(dx, dy)` dans le repère écran (axe Y vers le bas).
+Énumération des 6 états possibles d'une cellule :
 
-Ce vecteur est prévu pour être utilisé dans `FireSimulator.computeInflammationProbability()` afin de favoriser la propagation dans le sens du vent.
+| Constante | Couleur | Inflammable | Description |
+|-----------|---------|-------------|-------------|
+| `VIDE`    | blanc   | non | Case sans végétation |
+| `SAIN`    | vert    | **oui** | Végétation intacte |
+| `EN_FEU`  | orange  | non | Activement en combustion |
+| `BRULE`   | gris    | non | Cendres, ne peut plus brûler |
+| `EAU`     | bleu    | non | Pare-feu naturel |
+| `ROCHER`  | gris clair | non | Obstacle infranchissable |
 
----
-
-### 3.5 `Environment`
-
-```java
-public class Environment {
-    private WindDirection direction;  // direction du vent
-    private int windStrength;         // intensité [0..5]
-    private int humidity;             // humidité [0..100]
-}
-```
-
-**Rôle :** regroupe les **conditions météorologiques globales** de la simulation. Toutes les cellules partagent le même environnement.
-
-- **`windStrength`** : clampé dans `[0, 5]` par le setter (0 = calme, 5 = tempête).
-- **`humidity`** : clampé dans `[0, 100]` par le setter.
-
-Ces données sont disponibles dans `FireSimulator` via le champ `environment`, mais leur intégration dans le calcul de probabilité est un **développement futur prévu**.
+Méthodes utilitaires : `isFlammable()`, `isSpreading()`, `getColor()`.
 
 ---
 
-### 3.6 `Grid`
+### 3.2 CellType
 
-```java
-public class Grid {
-    private final int width, height;
-    private final Cell[][] cells;         // état courant
-    private final Cell[][] initialCells;  // état sauvegardé pour reset
-}
-```
+Énumération des 5 types de terrain avec leurs paramètres physiques :
 
-**Rôle :** structure de données 2D — c'est le **terrain de jeu** de la simulation. Elle ne contient aucune logique de simulation.
+| Type | Inflammabilité | Durée combustion | Couleur (SAIN) |
+|------|---------------|-----------------|----------------|
+| `FORET`        | 0.70 | 8 ticks  | vert foncé |
+| `PRAIRIE`      | 0.90 | 3 ticks  | vert clair |
+| `BROUSSAILLES` | 0.50 | 5 ticks  | brun |
+| `ZONE_HUMIDE`  | 0.20 | 12 ticks | bleu-vert |
+| `ZONE_URBAINE` | 0.30 | 6 ticks  | gris |
 
-**Convention interne :** les tableaux sont indexés `[y][x]` (ligne, colonne), mais toutes les méthodes publiques respectent l'ordre `(x, y)` pour la lisibilité.
-
-**Méthodes importantes :**
-
-- **`getNeighbors(x, y)`** : retourne les 8 voisins de Moore d'une cellule (les positions hors limites sont ignorées). Les cellules de coin ont 3 voisins, les cellules de bord en ont 5.
-- **`initRandom(...)`** : peuple la grille aléatoirement en répartissant les types de terrain selon des densités passées en paramètres (somme ≤ 1.0). Mémorise l'état résultant dans `initialCells`.
-- **`saveInitialState()`** : mémorise explicitement l'état courant comme état de référence pour le prochain `reset()`. À appeler après `setFire()` pour que le foyer initial soit restauré lors d'un reset.
-- **`reset()`** : restaure `cells` à partir de `initialCells` par copie profonde — aucune référence n'est partagée.
-- **`setFire(x, y)`** : déclenche un foyer en appelant `Cell.ignite()` sur la cellule cible.
-
-**Exemple d'initialisation :**
-
-```java
-grid.initRandom(0.6, 0.2, 0.1, 0.05, 0.05);
-// 60% forêt, 20% prairie, 10% broussailles, 5% humide, 5% urbain
-grid.setFire(25, 15);          // foyer au centre
-grid.saveInitialState();       // mémorise le foyer pour le reset
-```
-
-> **Pourquoi `saveInitialState()` est nécessaire :** `initRandom()` prend son snapshot dans `initialCells` *avant* l'appel à `setFire()`. Sans `saveInitialState()`, un reset effacerait le foyer initial.
+Le type est **immuable** : il ne change jamais pendant la simulation. Seul l'état évolue.
 
 ---
 
-### 3.7 `FireSimulator`
+### 3.3 Cell
 
-**Rôle :** c'est le **cœur algorithmique** de la simulation. Il exécute chaque tick et notifie les observateurs.
+Unité élémentaire de la grille. Contient :
+- `type : CellType` — immuable, détermine les propriétés physiques
+- `state : CellState` — mutable, évolue à chaque tick
+- `remainingBurnTime : int` — compteur décrémenté à chaque tick tant que `EN_FEU`
 
-#### Algorithme du tick (double buffering)
+**Transitions métier :**
+- `ignite()` — enflamme si `SAIN`, réinitialise le compteur
+- `burnOut()` — passe à `BRULE`, remet le compteur à 0
+- `decrementBurnTime()` — décrémente le compteur (min 0)
+- `copy()` — copie profonde (utilisée pour l'historique et les snapshots)
 
-Le double buffering garantit que toutes les décisions de propagation sont basées sur l'état **avant** le tick, et non sur un état partiellement mis à jour (ce qui biaiserait la simulation selon l'ordre de parcours).
-
-```
-tick() {
-  1. takeSnapshot()        → copie les états dans un tableau indépendant
-  2. collectIgnitions()    → détermine quelles cellules s'enflamment
-  3. appliquer ignitions   → appelle cell.ignite() sur les candidates
-  4. applyExtinctions()    → décrémente les compteurs, éteint si nécessaire
-  5. notifyListeners()     → informe les observateurs (vue, contrôleur…)
-}
-```
-
-#### `collectIgnitions(snapshot)`
-
-```java
-// Pour chaque cellule EN_FEU dans le snapshot...
-for chaque cellule (x, y) EN_FEU dans snapshot :
-    pour chaque voisin SAIN de (x, y) :
-        p = computeInflammationProbability(src, voisin)
-        si random.nextDouble() < p :
-            toIgnite.add(voisin)  // LinkedHashSet → pas de doublons
-```
-
-Le `LinkedHashSet` est crucial : une cellule entourée de plusieurs foyers ne peut être ajoutée qu'une seule fois, quelle que soit combien de voisins tentent de l'enflammer.
-
-#### `computeInflammationProbability(src, tgt)`
-
-Actuellement, retourne simplement `tgt.getType().getInflammability()`. Le paramètre `src` et l'objet `environment` sont disponibles pour une future implémentation de l'influence du vent et de l'humidité.
-
-#### Optimisation : `Random` dédié vs `Math.random()`
-
-`Math.random()` utilise en interne un `Random` statique **synchronisé** — problématique en contexte multi-thread. Le simulateur possède sa propre instance `private final Random random` non partagée.
+Implémente `Serializable` pour la sauvegarde/restauration.
 
 ---
 
-### 3.8 `SimulationListener`
+### 3.4 WindDirection
 
-```java
-public interface SimulationListener {
-    void onTick(int tick, Grid grid);
-    void onSimulationEnd();
-}
-```
+Énumération des 8 directions cardinales et inter-cardinales avec leurs vecteurs unitaires :
 
-**Rôle :** interface du patron **Observer**. Toute classe souhaitant réagir aux ticks (vue, statistiques, condition d'arrêt…) doit implémenter cette interface et s'enregistrer via `FireSimulator.addListener()`.
-
-`onTick` est appelé **après** chaque tick, une fois tous les changements appliqués.
+| Direction | dx | dy |
+|-----------|----|----|
+| N  |  0 | -1 |
+| NE |  1 | -1 |
+| E  |  1 |  0 |
+| SE |  1 |  1 |
+| S  |  0 |  1 |
+| SO | -1 |  1 |
+| O  | -1 |  0 |
+| NO | -1 | -1 |
 
 ---
 
-### 3.9 `SimulationState`
+### 3.5 Environment
 
-```java
-public enum SimulationState { IDLE, RUNNING, PAUSED }
+Conditions météorologiques globales influençant la propagation :
+
+| Paramètre | Type | Plage | Description |
+|-----------|------|-------|-------------|
+| `direction`    | `WindDirection` | 8 valeurs | Direction du vent |
+| `windStrength` | `int` | `[MIN_WIND=0, MAX_WIND=5]` | Intensité (0 = calme, 5 = tempête) |
+| `humidity`     | `int` | `[MIN_HUMIDITY=0, MAX_HUMIDITY=100]` | Taux d'humidité (%) |
+
+Les constantes `MIN_WIND`, `MAX_WIND`, `MIN_HUMIDITY`, `MAX_HUMIDITY` sont publiques et réutilisées
+par `ConsoleView`, `WindIndicator` et `FireSimulator`.
+
+Les setters clampent silencieusement les valeurs hors plage. Tous les champs sont `volatile`
+pour la visibilité multi-thread.
+
+Implémente `Serializable`.
+
+---
+
+### 3.6 Grid
+
+Grille 2D de l'automate cellulaire. Gère la structure de données, l'initialisation aléatoire
+et la sauvegarde/restauration de l'état initial.
+
+**Convention d'indexation :** stockage interne `cells[y][x]`, mais toutes les méthodes publiques
+acceptent les paramètres dans l'ordre `(x, y)`.
+
+**Méthodes principales :**
+
+| Méthode | Description |
+|---------|-------------|
+| `getCell(x, y)` / `setCell(x, y, cell)` | Accès direct aux cellules |
+| `getNeighbors(x, y)` | Voisins de Moore (8 directions), ignore les hors-limites |
+| `initRandom(densities...)` | Peuple aléatoirement selon 5 densités (somme ≤ 1) |
+| `setFire(x, y)` | Enflamme une cellule si inflammable |
+| `saveInitialState()` | Mémorise l'état courant comme état initial |
+| `reset()` | Restaure l'état mémorisé (copie profonde) |
+| `copyCells()` / `copyInitialCells()` | Copies profondes pour snapshot |
+| `restoreState(cells, initialCells)` | Restaure les deux tableaux depuis un snapshot |
+
+---
+
+### 3.7 FireSimulator
+
+Moteur de simulation. Orchestre les ticks, la propagation du feu, l'historique et les snapshots.
+
+#### Déroulement d'un tick
+
+```
+tick()
+ ├── pushHistory()          ← sauvegarde l'état courant (max 100 frames)
+ ├── takeSnapshot()         ← capture CellState[][] pour les décisions
+ ├── collectIgnitions()     ← calcule stochastiquement les nouveaux feux
+ ├── apply ignitions        ← enflamme atomiquement toutes les cellules cibles
+ ├── applyExtinctions()     ← décrémente les compteurs, éteint les épuisées
+ └── notifyListeners()      ← notifie tous les SimulationListener
 ```
 
-**Rôle :** représente l'état du **contrôleur** (pas de la grille). Utilisé par `SimulationController` pour autoriser ou refuser les transitions.
+#### Formule de propagation
+
+```
+windFactor     = 1.0 + (windStrength / MAX_WIND_FACTOR) × cos(θ)
+humidityFactor = 1.0 − humidity / 100.0
+P              = clamp(base × windFactor × humidityFactor, 0.0, 1.0)
+```
+
+où θ est l'angle entre le vecteur vent et le vecteur source→cible.
+Le double-buffering (`takeSnapshot`) garantit que toutes les décisions sont basées
+sur l'état *avant* le tick.
+
+#### Historique (step-back)
+
+`pushHistory()` stocke jusqu'à **100** états en pile (`Deque<Cell[][]>`). `stepBack()` dépile
+le dernier état et le réapplique à la grille.
+
+#### Snapshot (import/export)
+
+- `createSnapshot()` — emballe grille + environnement + tick dans un `SimulationSnapshot`
+- `applySnapshot(snapshot)` — restaure l'état, vide l'historique, notifie les listeners
+
+---
+
+### 3.8 SimulationListener
+
+Interface observateur notifiée par `FireSimulator` :
+
+```java
+void onTick(int tick, Grid grid);
+void onSimulationEnd();
+```
+
+Implémentée par `GridView`, `StatisticsPanel`, `ChartView`.
+
+---
+
+### 3.9 SimulationState
+
+Énumération des états du contrôleur :
 
 ```
 IDLE ──start()──► RUNNING ──pause()──► PAUSED
- ▲                    │                   │
- └──────stop()────────┴───────stop()──────┘
+ ▲                    │                    │
+ └─────stop()─────────┴────────────────────┘
 ```
 
 ---
 
-## 4. Le contrôleur (`controller/`)
+### 3.10 SimulationSnapshot
 
-### 4.1 `SimulationController`
+Capture **immuable** et **sérialisable** de l'état complet d'une simulation :
+- `Cell[][]` cells et initialCells (copies profondes)
+- `WindDirection`, `windStrength`, `humidity`
+- `tick` courant
+- dimensions `width` × `height`
 
-**Rôle :** orchestre la **boucle de simulation** dans un thread séparé, avec contrôle start/pause/stop/step.
-
-```java
-public class SimulationController {
-    private final FireSimulator simulator;
-    private volatile SimulationState state;
-    private volatile int currentTick;
-    private volatile int tickDelay;
-    private ScheduledExecutorService executor;
-}
-```
-
-#### Thread safety
-
-Toutes les méthodes publiques sont `synchronized` pour éviter les races conditions (ex. appel simultané de `start()` et `stop()`). Les champs `state`, `currentTick` et `tickDelay` sont `volatile` pour la visibilité entre threads.
-
-#### `ScheduledExecutorService`
-
-Le thread de simulation est géré par un `ScheduledExecutorService` à un seul thread. Il appelle `doTick()` toutes les `tickDelay` millisecondes via `scheduleAtFixedRate`.
-
-#### Méthodes clés
-
-| Méthode            | Effet                                                            |
-| ------------------ | ---------------------------------------------------------------- |
-| `start()`          | Crée l'executor et lance la boucle. No-op si déjà `RUNNING`.     |
-| `pause()`          | Arrête l'executor sans réinitialiser `currentTick`.              |
-| `step()`           | Exécute un seul tick manuellement (uniquement si non `RUNNING`). |
-| `stop()`           | Arrête l'executor et remet `currentTick` à 0.                    |
-| `reset()`          | Appelle `stop()` puis `grid.reset()`.                            |
-| `setTickDelay(ms)` | Change la vitesse et redémarre la boucle si elle tourne.         |
-
-#### Pourquoi `currentTick` dans le contrôleur et dans le simulateur ?
-
-- `FireSimulator.currentTick` : compteur global, jamais réinitialisé, transmis aux listeners.
-- `SimulationController.currentTick` : compteur local remis à 0 à chaque `stop()`, utile pour l'affichage du nombre de ticks d'une session.
+Utilisé par `SimulationIO` pour la persistance binaire.
 
 ---
 
-## 5. La vue (`view/`)
+### 3.11 SimulationIO
 
-### 5.1 `ConsoleView`
+Utilitaire statique pour la persistance binaire (sérialisation Java) :
 
-**Rôle :** affichage de la grille dans le terminal via les **séquences d'échappement ANSI**.
-
-#### Constantes ANSI
-
-```java
-private static final String CLEAR      = "\033[H\033[2J";  // efface l'écran
-private static final String GREEN_BOLD = "\033[1;92m";     // vert vif gras
-private static final String RED_BOLD   = "\033[1;91m";     // rouge vif gras
-// ...
-```
-
-Ces séquences sont universellement supportées sur Linux, macOS et Windows Terminal.
-
-#### `render(tick, grid)`
-
-1. Efface le terminal (`CLEAR`).
-2. Appelle `printLegend()`.
-3. Appelle `printStats(tick, grid)`.
-4. Construit la représentation de la grille dans un `StringBuilder` (évite les appels `System.out.print` répétés qui feraient scintiller l'affichage).
-5. Écrit tout en une seule fois.
-
-#### `printStats(tick, grid)`
-
-Parcourt la grille, compte les cellules par état (`SAIN`, `EN_FEU`, `BRULE`) et affiche :
-
-```
-Tick   42 │ Sains:   312 │ En feu:    15 │ Brûlés:   73 │ Destruction:  18.3%
-```
-
-Le taux de destruction est calculé par rapport au **total** des cellules (`width × height`).
-
-#### `toColorBlock(cell)`
-
-Associe chaque `CellState` à une représentation visuelle de deux caractères :
-
-| État     | Symbole | Couleur   |
-| -------- | ------- | --------- |
-| `VIDE`   | `░░`    | Gris      |
-| `SAIN`   | `██`    | Vert vif  |
-| `EN_FEU` | `▓▓`    | Rouge vif |
-| `BRULE`  | `  `    | Fond noir |
-| `EAU`    | `~~`    | Bleu vif  |
-| `ROCHER` | `▒▒`    | Blanc vif |
+| Méthode | Description |
+|---------|-------------|
+| `save(File, SimulationSnapshot)` | Écrit le snapshot en binaire (`.simcel`) |
+| `load(File)` | Lit et désérialise un fichier `.simcel` |
 
 ---
 
-### 5.2 `GridView`
+## 4. Contrôleur (`controller/`)
 
-**Rôle :** rendu graphique de la grille sur un `Canvas` JavaFX. Implémente `SimulationListener` pour se redessiner automatiquement après chaque tick.
+### 4.1 SimulationController
 
-#### Thread safety et double buffering
+Orchestre le cycle de vie de la simulation. Toutes les méthodes publiques sont `synchronized`.
 
-`onTick()` est appelé depuis le thread de simulation (pas le thread JavaFX). La mise à jour du canvas doit se faire sur le thread JavaFX :
-
-```java
-@Override
-public void onTick(int tick, Grid grid) {
-    CellState[][] snapshot = snapshot(grid); // capture sur le thread de simulation
-    Platform.runLater(() -> draw(snapshot));  // rendu sur le thread JavaFX
-}
-```
-
-Le snapshot est un tableau indépendant : le tick suivant peut modifier la grille sans affecter le rendu en cours.
-
-#### Cache de couleurs
-
-Les objets `Color` JavaFX sont coûteux à créer (parsing hexadécimal). Ils sont précalculés une seule fois dans un tableau statique indexé par `CellState.ordinal()` :
-
-```java
-private static final Color[] STATE_COLORS;
-static {
-    for (CellState s : CellState.values())
-        STATE_COLORS[s.ordinal()] = Color.web(s.getColor());
-}
-```
-
-#### Grille visuelle
-
-Une constante `GRID_GAP = 1.0` réduit la taille de chaque cellule d'un pixel. Le fond sombre (`#0a0a1a`) visible entre les cellules simule des lignes de grille sans tracé explicite.
-
-#### API publique
-
-- **`refresh(Grid)`** : redessine immédiatement depuis le thread JavaFX (utilisé par le bouton Réinitialiser).
-- **`getCellAt(pixelX, pixelY)`** : convertit des coordonnées pixel en coordonnées de grille `[col, ligne]`. Retourne `null` si hors limites.
-- **`getCellSize()`** : retourne la taille d'une cellule en pixels.
-
-La classe est déclarée `final` pour éliminer l'avertissement "overridable method call in constructor" (appel de `refresh()` dans le constructeur).
+| Méthode | Description |
+|---------|-------------|
+| `start()` | Lance la boucle dans un `ScheduledExecutorService` |
+| `pause()` | Suspend la boucle sans réinitialiser |
+| `stop()` | Arrête et remet le compteur à 0 |
+| `reset()` | `stop()` + `grid.reset()` + `clearHistory()` |
+| `step()` | Exécute un tick manuellement (hors `RUNNING`) |
+| `stepBack()` | Revient un tick en arrière (hors `RUNNING`) |
+| `setTickDelay(ms)` | Ajuste l'intervalle ; redémarre si `RUNNING` |
+| `saveToFile(File)` | Crée un snapshot et le sérialise |
+| `loadFromFile(File)` | Désérialise, applique le snapshot, passe en `PAUSED` |
 
 ---
 
-### 5.3 `StatisticsPanel`
+## 5. Vue (`view/`)
 
-**Rôle :** panneau `VBox` affichant cinq métriques en temps réel : numéro de tick, cellules saines, en feu, brûlées, et taux de destruction.
+### 5.1 GridView
 
-```
-Statistiques
-────────────
-Tick : 42
-Sains : 312
-En feu : 15
-Brûlés : 73
-Destruction : 18.3 %
-```
+Canvas JavaFX qui affiche la grille. Implémente `SimulationListener`.
 
-#### Séparation des threads
-
-Les comptages sont effectués sur le thread de simulation (dans `onTick`), seule la mise à jour des labels est déléguée au thread JavaFX :
-
-```java
-final int fSain = sain, fFeu = enFeu, fBrule = brule;
-final double taux = ...;
-Platform.runLater(() -> {
-    lblSain.setText("Sains : " + fSain);
-    // ...
-});
-```
-
-Les variables `final` dans le lambda évitent de capturer des variables mutables.
-
-#### `reset()`
-
-Remet tous les labels à leur état initial (`—`). Appelé depuis le thread JavaFX lors d'un clic sur Réinitialiser.
+- Les couleurs sont pré-calculées en tableaux (`STATE_COLORS[]`, `TYPE_SAIN_COLORS[]`) pour éviter
+  les allocations à chaque tick.
+- Le rendu est threadé : capture d'un snapshot de couleurs sur le thread de simulation,
+  puis `Platform.runLater()` pour dessiner.
+- `getCellAt(pixelX, pixelY)` convertit les coordonnées écran en coordonnées grille.
+- `refresh(Grid)` force un redessin immédiat (utilisé après reset ou chargement).
 
 ---
 
-### 5.4 `ChartView`
+### 5.2 StatisticsPanel
 
-**Rôle :** graphique d'évolution temporelle dessiné sur un `Canvas` sans dépendance à `javafx.charts` (non disponible sur Maven Central pour JavaFX 21).
+Barre horizontale (`HBox`) affichant en temps réel :
+- Numéro du tick
+- Nombre de cellules saines, en feu, brûlées
+- Taux de destruction (% de cellules brûlées sur le total)
 
-Trois courbes sont tracées :
-
-| Courbe  | Couleur           |
-| ------- | ----------------- |
-| Sains   | Vert (`#228B22`)  |
-| En feu  | Rouge (`#FF4500`) |
-| Brûlés  | Gris (`#888888`)  |
-
-#### Fenêtre glissante
-
-`MAX_POINTS = 300` : au-delà de 300 ticks, le point le plus ancien est supprimé. Cela maintient une fenêtre glissante et évite la dégradation des performances sur les longues simulations.
-
-#### Rendu
-
-Le rendu est découpé en méthodes privées :
-
-- **`drawAxes()`** : axe Y (vertical) et axe X (horizontal) + titre.
-- **`drawSeries()`** : polyligne pour une série, normalisée par rapport au nombre total de cellules.
-- **`drawLegend()` / `drawLegendEntry()`** : légende colorée en haut à droite.
-
-#### `clear()`
-
-Vide les trois listes de données et redessine le graphique vide. Appelé depuis le thread JavaFX lors d'un reset.
+Comptages sur le thread de simulation, mise à jour labels sur le thread JavaFX.
 
 ---
 
-### 5.5 `MainWindow`
+### 5.3 ChartView
 
-**Rôle :** fenêtre principale JavaFX. Assemble les trois vues dans un `BorderPane`, gère les boutons de contrôle et implémente la navigation interactive (zoom, déplacement).
+Canvas personnalisé (sans `javafx.charts`) traçant trois courbes en temps réel :
 
-#### Mise en page
+| Courbe | Couleur | Données |
+|--------|---------|---------|
+| Sains  | vert    | Nombre de cellules `SAIN` |
+| En feu | orange  | Nombre de cellules `EN_FEU` |
+| Brûlés | gris    | Nombre de cellules `BRULE` |
+
+- Fenêtre glissante de **300 points** (`MAX_POINTS`).
+- `observedMax` adapte automatiquement l'échelle de l'axe Y.
+- `removeLastPoint()` synchronisé avec `stepBack()` pour rester cohérent.
+- `BG_COLOR` et `MIN_OBSERVED_MAX` extraits en constantes nommées.
+
+---
+
+### 5.4 LegendPanel
+
+Barre horizontale figée (haut de fenêtre) affichant :
+- Les 5 types de terrain avec leur couleur `SAIN`
+- Les états spéciaux : VIDE, EN FEU, BRÛLÉ, EAU, ROCHER
+
+---
+
+### 5.5 WindIndicator
+
+Composant `VBox` affichant :
+- Une **boussole** canvas (96×96 px) avec flèche de vent directionnelle
+  (longueur ∝ intensité, orange si vent actif, gris si nul)
+- Les labels de direction (N/NE/E…), le label actif en orange
+- Cinq indicateurs **●/○** pour la force du vent
+- Le taux d'humidité
+
+`refresh(Environment)` met à jour la boussole et les labels dynamiquement.
+
+Constantes nommées : `SIZE`, `R`, `MAX_WIND_STRENGTH`, `ARROWHEAD_ANGLE`,
+`ARROWHEAD_LENGTH`, `LABEL_RADIUS_EXTRA`, et les couleurs `COLOR_*`.
+
+---
+
+### 5.6 ConsoleView
+
+Vue texte ANSI pour le mode headless :
+
+| État | Rendu |
+|------|-------|
+| VIDE   | `░░` gris |
+| SAIN   | `██` vert |
+| EN_FEU | `▓▓` rouge |
+| BRULE  | `  ` fond noir |
+| EAU    | `~~` bleu |
+| ROCHER | `▒▒` blanc |
+
+- `render(tick, grid)` efface le terminal et redessine en un seul `print`.
+- `startCommandListener(env, ctrl)` lance un thread daemon lisant stdin.
+- Commandes disponibles : `wind <dir> <force>`, `humidity <val>`, `speed <ms>`, `help`.
+- Les bornes de validation (`0–5`, `0–100`) sont lues depuis `Environment.MAX_WIND`
+  et `Environment.MAX_HUMIDITY`.
+
+---
+
+### 5.7 MainWindow
+
+Fenêtre principale JavaFX (`BorderPane`) :
 
 ```
-┌──────────────────────────┬──────────────┐
-│                          │  Contrôles   │
-│       GridView           │  Statistiques│
-│    (zone centrale)       │  ChartView   │
-│                          │              │
-└──────────────────────────┴──────────────┘
+┌─────────────────────────────────────────────────┐
+│  LegendPanel (Top)                              │
+├────────────────────────────┬────────────────────┤
+│                            │ Contrôles          │
+│    GridView (Center)       │ Paramètres météo   │
+│    zoom + pan + édition    │ Edition du terrain │
+│                            │                    │
+├────────────────────────────┤                    │
+│ ChartView │ WindIndicator  │                    │
+├───────────────────────────────────────────────-─┤
+│  StatisticsPanel (Bottom)                       │
+└─────────────────────────────────────────────────┘
 ```
 
-La zone centrale contient un `Pane` avec clip (pour masquer le débordement) et le `GridView`. Le panneau droit est une `VBox` de largeur fixe 300 px.
+**Fonctionnalités :**
 
-#### Zoom (molette)
+| Fonctionnalité | Détail |
+|----------------|--------|
+| Zoom | Molette souris, centré sur le curseur, plage `[0.2×, 8×]` |
+| Déplacement | Clic-glisser ; double-clic reset la vue |
+| Mode édition | 9 outils : 5 terrains + Vide, Eau, Rocher, Foyer |
+| Pinceau | Clic ou glisser sur la grille |
+| Paramètres météo | ComboBox direction + sliders force/humidité avec `windIndicator.refresh()` |
+| Sauvegarde | Bouton 💾, FileChooser `.simcel` |
+| Chargement | Bouton 📂, FileChooser `.simcel`, rafraîchit toute la vue |
+| Auto-stop | S'arrête automatiquement quand plus aucune cellule `EN_FEU` |
 
-Le zoom est centré sur la position du curseur grâce à la formule de pivot :
-
-```java
-Bounds b      = gridView.getBoundsInParent();
-double pivotX = e.getX() - (b.getMinX() + b.getWidth()  / 2.0);
-double pivotY = e.getY() - (b.getMinY() + b.getHeight() / 2.0);
-
-gridView.setScaleX(newScale);
-gridView.setScaleY(newScale);
-gridView.setTranslateX(gridView.getTranslateX() + pivotX * (1 - ratio));
-gridView.setTranslateY(gridView.getTranslateY() + pivotY * (1 - ratio));
-```
-
-Plage : ×0.2 – ×8.0, facteur 1.15 par cran de molette.
-
-#### Déplacement (clic-glisser)
-
-Les origines sont mémorisées à `mousePressed` et la translation est mise à jour en temps réel à `mouseDragged`. Le curseur visuel passe de `OPEN_HAND` à `CLOSED_HAND` pendant le drag.
-
-#### Réinitialisation de la vue
-
-`resetView()` remet `scaleX/Y` à 1.0 et `translateX/Y` à 0.0. Déclenché par double-clic sur la grille ou par le bouton Réinitialiser.
-
-#### Listener d'arrêt automatique
-
-Un `SimulationListener` anonyme (`stoppingListener()`) vérifie après chaque tick s'il reste des cellules `EN_FEU`. Quand le feu est éteint, il appelle `controller.stop()` et remet les boutons en état idle via `Platform.runLater`.
-
-#### Gestion des boutons
-
-| Bouton        | État `idle`  | État `running` |
-| ------------- | :----------: | :------------: |
-| Démarrer      | activé       | désactivé      |
-| Pause         | désactivé    | activé         |
-| Pas à pas     | activé       | désactivé      |
-| Réinitialiser | toujours actif                |
-
-#### CSS
-
-Le style sombre est défini dans `src/main/resources/com/simcel/style.css`. Classes utilisées :
-
-- `.root` : fond global `#1a1a2e`
-- `.right-panel` : fond du panneau droit `#12122a`
-- `.grid-pane` : fond de la zone grille `#0f0f1e`
-- `.label-title` : titre de section en gras
-- `.button`, `.button:hover`, `.button:pressed`, `.button:disabled` : états visuels des boutons
+**Méthodes de construction :** `buildGridPane()`, `buildRightPanel()`,
+`buildEnvSection()`, `buildEditSection()`.
 
 ---
 
 ## 6. Point d'entrée (`Main`)
 
-```java
-public class Main extends Application {
-    public static void main(String[] args) throws InterruptedException {
-        if (args.length > 0 && args[0].equals("--headless")) {
-            runCLI(args);
-        } else {
-            launch(args);  // démarre JavaFX
-        }
-    }
-}
+`Main extends Application` — routage GUI/CLI :
+
+```
+main(args)
+ ├── "--headless" présent → runCLI(args)
+ └── sinon               → launch() → start(Stage)
 ```
 
-### Mode graphique (`start`)
+**Mode graphique :** grille `50×30`, densités 60/20/10/5/5 %, foyer central, délai 200 ms.
 
-```java
-@Override
-public void start(Stage primaryStage) {
-    Grid grid = new Grid(50, 30);
-    grid.initRandom(0.6, 0.2, 0.1, 0.05, 0.05);
-    grid.setFire(25, 15);
-    grid.saveInitialState();   // mémorise le foyer pour le reset
+**Mode console — arguments :**
 
-    Environment env           = new Environment();
-    FireSimulator simulator   = new FireSimulator(grid, env);
-    SimulationController ctrl = new SimulationController(simulator, 200);
+| Argument | Défaut | Description |
+|----------|--------|-------------|
+| `--width <n>`            | 40  | Largeur de la grille |
+| `--height <n>`           | 20  | Hauteur de la grille |
+| `--ticks <n>`            | 100 | Ticks maximum |
+| `--delay <ms>`           | 200 | Délai entre ticks |
+| `--wind-direction <dir>` | N   | Direction initiale du vent |
+| `--wind-strength <0-5>`  | 0   | Intensité initiale du vent |
+| `--humidity <0-100>`     | 0   | Humidité initiale |
 
-    new MainWindow(simulator, ctrl).show(primaryStage);
-}
-```
-
-### Mode console (`runCLI`)
-
-1. **Parsing des arguments** : les flags `--width`, `--height`, `--ticks`, `--delay`, `--wind-direction`, `--wind-strength`, `--humidity` sont lus avec un pattern `args[++i]` pour sauter proprement la valeur après chaque flag.
-2. **Initialisation** : création de la grille, de l'environnement, du simulateur, du contrôleur et de la vue.
-3. **Listener d'arrêt** : un `SimulationListener` anonyme décrémente un `CountDownLatch` quand le nombre maximum de ticks est atteint ou qu'il n'y a plus de feu actif.
-4. **Synchronisation** : le thread principal appelle `done.await()` et bloque jusqu'à ce que le listener décrépite le latch.
-5. **Bilan final** : affichage des statistiques après arrêt.
-
-### `hasActiveFire(grid)`
-
-Méthode utilitaire qui parcourt la grille et retourne `true` dès qu'une cellule `EN_FEU` est trouvée. Sert à stopper la simulation automatiquement quand le feu s'éteint.
+Toutes les densités et dimensions par défaut sont extraites en constantes nommées
+(`GUI_WIDTH`, `DENSITY_FORET`, etc.).
 
 ---
 
-## 7. Scripts de lancement (`launchers/`)
+## 7. Algorithme de simulation
 
-Deux scripts shell facilitent la compilation et le lancement sans configuration IDE.
+### Propagation stochastique
 
-### `run-cli.sh`
+Pour chaque cellule `EN_FEU` (basé sur le snapshot *avant* le tick) :
+1. Pour chaque voisin `SAIN` dans le voisinage de Moore :
+2. Calculer `P = base × windFactor × humidityFactor`
+3. Tirer `random.nextDouble()` — si `< P`, ajouter le voisin à `toIgnite`
+4. Appliquer toutes les ignitions atomiquement (pas de double-comptage grâce au `LinkedHashSet`)
 
+### Extinction
+
+Pour chaque cellule `EN_FEU` dans le snapshot :
+- Décrémenter `remainingBurnTime`
+- Si `== 0` → `burnOut()` → passe à `BRULE`
+
+### Double-buffering
+
+`takeSnapshot()` capture un tableau `CellState[width][height]` en début de tick.
+Toutes les décisions (ignition, extinction) se basent sur ce snapshot immuable,
+garantissant que l'ordre de parcours des cellules n'influence pas le résultat.
+
+---
+
+## 8. Import / Export
+
+La persistance utilise la **sérialisation binaire Java** (format `.simcel`).
+
+### Ce qui est sauvegardé
+
+- État complet de toutes les cellules (type + état + temps restant)
+- État initial (utilisé par le bouton Réinitialiser)
+- Paramètres météo (direction, force du vent, humidité)
+- Numéro du tick courant
+
+### Flux de sauvegarde
+
+```
+btnSave → SimulationController.saveToFile(file)
+            └── FireSimulator.createSnapshot()
+                    ├── Grid.copyCells()
+                    ├── Grid.copyInitialCells()
+                    └── SimulationIO.save(file, snapshot)
+```
+
+### Flux de chargement
+
+```
+btnLoad → SimulationController.loadFromFile(file)
+            ├── SimulationIO.load(file)          → SimulationSnapshot
+            ├── FireSimulator.applySnapshot()
+            │       ├── Grid.restoreState()
+            │       ├── Environment setters
+            │       └── notifyListeners()
+            └── Vue : gridView.refresh(), chartView.clear(),
+                       statisticsPanel.reset(), windIndicator.refresh()
+```
+
+Les dimensions de la grille du snapshot doivent correspondre à la grille courante
+(sinon `IllegalArgumentException`).
+
+---
+
+## 9. Diagramme des dépendances
+
+```
+Main
+ ├── Grid ──────────────────── Cell ── CellType / CellState
+ │    └── (copyCells, restore)
+ ├── Environment ──────────── WindDirection
+ ├── FireSimulator
+ │    ├── uses Grid, Environment
+ │    ├── notifies SimulationListener
+ │    ├── createSnapshot() ──► SimulationSnapshot
+ │    └── applySnapshot()  ◄── SimulationSnapshot
+ ├── SimulationController
+ │    ├── drives FireSimulator
+ │    ├── saveToFile() ──► SimulationIO
+ │    └── loadFromFile() ◄── SimulationIO
+ └── MainWindow
+      ├── GridView (SimulationListener)
+      ├── StatisticsPanel (SimulationListener)
+      ├── ChartView (SimulationListener)
+      ├── LegendPanel
+      └── WindIndicator
+```
+
+---
+
+## 10. Scripts de lancement
+
+| Script | Description |
+|--------|-------------|
+| `run-gui.sh`      | Lance le mode graphique JavaFX |
+| `run-headless.sh` | Lance le mode console (passer `--headless` + options) |
+
+**Compilation en ligne de commande :**
 ```bash
-./launchers/run-cli.sh [options]
+mvn compile
+mvn package       # génère un JAR exécutable
 ```
 
-| Option              | Défaut | Description                              |
-| ------------------- | :----: | ---------------------------------------- |
-| `--width W`         |   40   | Largeur de la grille                     |
-| `--height H`        |   20   | Hauteur de la grille                     |
-| `--ticks T`         |  100   | Nombre maximum de ticks                  |
-| `--delay D`         |  200   | Délai entre ticks (ms)                   |
-| `--wind-direction D`|   N    | Direction du vent (N NE E SE S SO O NO)  |
-| `--wind-strength S` |    0   | Force du vent `[0..5]`                   |
-| `--humidity H`      |    0   | Taux d'humidité `[0..100]`               |
-
-### `run-gui.sh`
-
+**Génération de la JavaDoc :**
 ```bash
-./launchers/run-gui.sh
-```
-
-Lance la compilation Maven (`mvn compile -q`) puis démarre l'interface graphique JavaFX (`mvn exec:java -q`). Aucun argument n'est supporté : la configuration initiale est codée dans `Main.start()`.
-
-Les deux scripts se placent automatiquement à la racine du projet via `cd "$(dirname "$0")/.."` pour que Maven trouve le `pom.xml`.
-
----
-
-## 8. Configuration du module (`module-info.java`)
-
-```java
-module com.simcel {
-    requires javafx.controls;
-    requires javafx.fxml;
-
-    opens com.simcel to javafx.fxml;
-
-    exports com.simcel;
-    exports com.simcel.model;
-    exports com.simcel.controller;
-    exports com.simcel.view;
-}
-```
-
-Définit `com.simcel` comme un **module Java nommé** (JPMS, Java 9+).
-
-| Directive                         | Rôle                                                           |
-| --------------------------------- | -------------------------------------------------------------- |
-| `requires javafx.controls`        | Accès aux composants UI JavaFX (Button, Label, Canvas…)        |
-| `requires javafx.fxml`            | Accès au chargeur de fichiers `.fxml`                          |
-| `opens com.simcel to javafx.fxml` | Autorise JavaFX à instancier les contrôleurs par **réflexion** |
-| `exports com.simcel`              | Rend le package accessible aux autres modules                  |
-| `exports com.simcel.model`        | Idem pour `model`                                              |
-| `exports com.simcel.controller`   | Idem pour `controller`                                         |
-| `exports com.simcel.view`         | Idem pour `view`                                               |
-
-Sans `opens`, JavaFX ne pourrait pas instancier `Main` (ni les futurs contrôleurs FXML) par réflexion au moment du chargement.
-
----
-
-## 9. Algorithme de simulation pas à pas
-
-Voici ce qui se passe concrètement lors d'un appel à `FireSimulator.tick()` :
-
-```
-État initial (tick N) :
-  . . F . .        F = EN_FEU
-  . S S S .        S = SAIN
-  . S S S .        . = VIDE
-
-Étape 1 — Snapshot :
-  snapshot[x][y] = état courant de chaque cellule
-  (copie indépendante, pas de référence partagée)
-
-Étape 2 — Collecte des ignitions :
-  La cellule F(2,0) est EN_FEU dans le snapshot.
-  Ses voisins SAIN : S(1,1), S(2,1), S(3,1)
-  Pour chaque voisin :
-    p = inflammabilité du type de terrain
-    si random() < p → ajouter au LinkedHashSet
-
-Étape 3 — Application des ignitions :
-  Toutes les cellules du LinkedHashSet passent à EN_FEU
-  (atomique : personne ne voit un état intermédiaire)
-
-Étape 4 — Extinction :
-  F(2,0) était EN_FEU dans le snapshot → decrementBurnTime()
-  si remainingBurnTime == 0 → burnOut() → BRULE
-
-Étape 5 — Notification :
-  onTick(N+1, grid) appelé sur tous les listeners
-```
-
----
-
-## 10. Diagramme des dépendances entre classes
-
-```
-                    ┌──────────────┐
-                    │    Main      │
-                    └──────┬───────┘
-                           │ crée
-          ┌────────────────┼──────────────────────┐
-          ▼                ▼                      ▼
-  ┌──────────────┐  ┌────────────┐        ┌─────────────┐
-  │SimulationCtrl│  │FireSimulat.│        │ MainWindow  │
-  └──────┬───────┘  └─────┬──────┘        └──────┬──────┘
-         │ pilote          │ lit/écrit            │ crée
-         └────────────────►│              ┌───────┼───────┐
-                    ┌──────▼──────┐       ▼       ▼       ▼
-                    │    Grid     │  GridView StatPanel ChartView
-                    └──────┬──────┘       │       │       │
-                           │ contient     └───────┴───────┘
-                    ┌──────▼──────┐         implémentent
-                    │    Cell     │       SimulationListener
-                    └──────┬──────┘              ▲
-                           │ a un                │
-              ┌────────────┼──────────┐    FireSimulator
-              ▼                      ▼    (notifie via addListener)
-        ┌─────────┐            ┌──────────┐
-        │CellState│            │CellType  │
-        └─────────┘            └──────────┘
-
-  FireSimulator  ──► Environment   (lit les conditions météo)
-  Environment    ──► WindDirection (direction du vent)
-  SimulationCtrl ──► SimulationState (état du cycle de vie)
-
-  ConsoleView implémente aussi SimulationListener (mode headless uniquement)
+mvn javadoc:javadoc
+# Résultat dans target/site/apidocs/
 ```

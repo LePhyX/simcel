@@ -30,7 +30,10 @@ import java.util.Set;
  */
 public class FireSimulator {
 
-    private static final int MAX_HISTORY = 100;
+    /** Nombre maximum d'états conservés pour le retour en arrière. */
+    private static final int    MAX_HISTORY     = 100;
+    /** Diviseur de l'intensité du vent dans le calcul du facteur directionnel. */
+    private static final double MAX_WIND_FACTOR = Environment.MAX_WIND;
 
     private final Grid grid;
     private final Environment environment;
@@ -227,7 +230,14 @@ public class FireSimulator {
     // Méthodes privées
     // -------------------------------------------------------------------------
 
-    /** Sauvegarde l'état courant de la grille dans l'historique. */
+    /**
+     * Sauvegarde l'état courant de la grille dans l'historique.
+     * Le tableau interne utilise la convention {@code snap[x][y]} (ordre inversé
+     * par rapport au stockage interne de {@link Grid}, mais cohérent avec les
+     * accesseurs publics {@code getCell(x, y)}).
+     * Si la capacité maximale {@link #MAX_HISTORY} est atteinte, l'état le plus
+     * ancien est supprimé.
+     */
     private void pushHistory() {
         int w = grid.getWidth();
         int h = grid.getHeight();
@@ -240,7 +250,11 @@ public class FireSimulator {
     }
 
     /**
-     * Capture les états actuels dans un tableau indépendant.
+     * Capture les états courants des cellules dans un tableau indépendant,
+     * utilisé comme référence immuable pendant toute la durée du tick.
+     * Convention : {@code snapshot[x][y]}, cohérente avec {@link #pushHistory()}.
+     *
+     * @return tableau {@code CellState[width][height]} des états avant le tick
      */
     private CellState[][] takeSnapshot() {
         int w = grid.getWidth();
@@ -360,6 +374,6 @@ public class FireSimulator {
         double windMag = Math.sqrt(wdx * wdx + wdy * wdy);
         double propMag = Math.sqrt(pdx * pdx + pdy * pdy);
         double cosTheta = dot / (windMag * propMag);
-        return 1.0 + (windStrength / 5.0) * cosTheta;
+        return 1.0 + (windStrength / MAX_WIND_FACTOR) * cosTheta;
     }
 }
