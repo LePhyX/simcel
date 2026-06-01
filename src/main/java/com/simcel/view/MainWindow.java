@@ -2,6 +2,7 @@ package com.simcel.view;
 
 import com.simcel.controller.SimulationController;
 import com.simcel.model.CellState;
+import com.simcel.model.Environment;
 import com.simcel.model.FireSimulator;
 import com.simcel.model.Grid;
 import com.simcel.model.SimulationListener;
@@ -15,6 +16,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
@@ -48,11 +50,14 @@ public class MainWindow {
     private GridView        gridView;
     private StatisticsPanel statisticsPanel;
     private ChartView       chartView;
+    private LegendPanel     legendPanel;
+    private WindIndicator   windIndicator;
 
-    private final Button btnStart = new Button("▶  Démarrer");
-    private final Button btnPause = new Button("⏸  Pause");
-    private final Button btnStep  = new Button("⏭  Pas à pas");
-    private final Button btnReset = new Button("↺  Réinitialiser");
+    private final Button btnStart    = new Button("▶  Démarrer");
+    private final Button btnPause    = new Button("⏸  Pause");
+    private final Button btnStep     = new Button("⏭  Pas à pas");
+    private final Button btnStepBack = new Button("⏮  Pas en arrière");
+    private final Button btnReset    = new Button("↺  Réinitialiser");
 
     /**
      * Crée la fenêtre principale.
@@ -72,9 +77,12 @@ public class MainWindow {
      * @param stage stage JavaFX fourni par {@code Application.start()}
      */
     public void show(Stage stage) {
+        Environment env = simulator.getEnvironment();
         gridView        = new GridView(grid, CELL_SIZE);
         statisticsPanel = new StatisticsPanel();
         chartView       = new ChartView(RIGHT_WIDTH - 20, CHART_HEIGHT);
+        legendPanel     = new LegendPanel();
+        windIndicator   = new WindIndicator(env);
 
         simulator.addListener(gridView);
         simulator.addListener(statisticsPanel);
@@ -237,12 +245,14 @@ public class MainWindow {
         btnStart.setDisable(false);
         btnPause.setDisable(true);
         btnStep.setDisable(false);
+        btnStepBack.setDisable(false);
     }
 
     private void setRunningState() {
         btnStart.setDisable(true);
         btnPause.setDisable(false);
         btnStep.setDisable(true);
+        btnStepBack.setDisable(true);
     }
 
     // -------------------------------------------------------------------------
@@ -250,7 +260,7 @@ public class MainWindow {
     // -------------------------------------------------------------------------
 
     private VBox buildRightPanel() {
-        for (Button b : new Button[]{btnStart, btnPause, btnStep, btnReset}) {
+        for (Button b : new Button[]{btnStart, btnPause, btnStep, btnStepBack, btnReset}) {
             b.setMaxWidth(Double.MAX_VALUE);
         }
         setIdleState();
@@ -266,6 +276,11 @@ public class MainWindow {
         });
 
         btnStep.setOnAction(e -> controller.step());
+
+        btnStepBack.setOnAction(e -> {
+            controller.stepBack();
+            chartView.removeLastPoint();
+        });
 
         btnReset.setOnAction(e -> {
             controller.reset();
@@ -289,12 +304,14 @@ public class MainWindow {
 
         VBox controls = new VBox(6,
                 titleControls, new Separator(),
-                btnStart, btnPause, btnStep, btnReset,
+                btnStart, btnPause, btnStep, btnStepBack, btnReset,
                 new Separator(),
                 lblSpeed, sliderSpeed);
         controls.setPadding(new Insets(10));
 
-        VBox right = new VBox(8, controls, statisticsPanel, chartView);
+        HBox legendRow = new HBox(8, legendPanel, windIndicator);
+
+        VBox right = new VBox(8, controls, statisticsPanel, chartView, legendRow);
         right.getStyleClass().add("right-panel");
         right.setPadding(new Insets(8));
         right.setPrefWidth(RIGHT_WIDTH);
