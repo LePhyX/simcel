@@ -133,6 +133,8 @@ public class Main extends Application {
         });
 
         view.printLegend();
+        System.out.println("Simulation démarrée. Tapez 'help' pour la liste des commandes.");
+        view.startCommandListener(env, ctrl);
         Thread.sleep(1000);
         ctrl.start();
         done.await();
@@ -141,6 +143,7 @@ public class Main extends Application {
         System.out.println("\n=== Simulation terminée ===");
         System.out.printf("Ticks écoulés : %d%n", lastTick.get());
         view.printStats(lastTick.get(), grid);
+        System.exit(0);
     }
 
     /**
