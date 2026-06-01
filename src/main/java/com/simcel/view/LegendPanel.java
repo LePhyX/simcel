@@ -3,18 +3,18 @@ package com.simcel.view;
 import com.simcel.model.CellState;
 import com.simcel.model.CellType;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
 /**
- * Panneau affichant la légende des types de terrain et des états de cellules.
+ * Barre de légende horizontale affichée au-dessus de la grille.
  *
- * <p>La légende est divisée en deux sections :
+ * <p>Elle comprend deux groupes séparés par un trait vertical :
  * <ul>
  *   <li><b>Terrain</b> — les cinq types de terrain à l'état sain, chacun
  *       coloré selon {@link CellType#getHealthyColor()}.</li>
@@ -22,29 +22,31 @@ import javafx.scene.shape.Rectangle;
  *       {@link CellState#EN_FEU}, {@link CellState#BRULE},
  *       {@link CellState#EAU}, {@link CellState#ROCHER}).</li>
  * </ul>
- *
- * <p>Le panneau est purement statique (pas de {@link com.simcel.model.SimulationListener})
- * car les couleurs ne changent pas au cours de la simulation.</p>
  */
-public class LegendPanel extends VBox {
+public class LegendPanel extends HBox {
 
     /**
-     * Crée le panneau de légende.
+     * Crée la barre de légende.
      */
     public LegendPanel() {
-        super(3);
-        setPadding(new Insets(10, 6, 6, 6));
+        super(10);
+        setPadding(new Insets(6, 14, 6, 14));
+        setAlignment(Pos.CENTER_LEFT);
+        getStyleClass().add("legend-bar");
 
         Label title = new Label("Légende");
         title.getStyleClass().add("label-title");
-        getChildren().addAll(title, new Separator());
+        getChildren().add(title);
+        getChildren().add(vSep());
 
-        getChildren().add(sectionLabel("Terrain"));
+        getChildren().add(sectionLabel("Terrain :"));
         for (CellType type : CellType.values()) {
             getChildren().add(buildEntry(Color.web(type.getHealthyColor()), labelFor(type)));
         }
 
-        getChildren().addAll(new Separator(), sectionLabel("États"));
+        getChildren().add(vSep());
+
+        getChildren().add(sectionLabel("États :"));
         for (CellState state : CellState.values()) {
             if (state != CellState.SAIN) {
                 getChildren().add(buildEntry(Color.web(state.getColor()), labelFor(state)));
@@ -54,9 +56,15 @@ public class LegendPanel extends VBox {
 
     // -------------------------------------------------------------------------
 
+    private static Separator vSep() {
+        Separator s = new Separator(Orientation.VERTICAL);
+        s.setMinHeight(20);
+        return s;
+    }
+
     private static Label sectionLabel(String text) {
         Label lbl = new Label(text);
-        lbl.setStyle("-fx-text-fill: #888899; -fx-font-size: 10px;");
+        lbl.setStyle("-fx-text-fill: #888899; -fx-font-size: 11px;");
         return lbl;
     }
 
@@ -68,7 +76,7 @@ public class LegendPanel extends VBox {
         Label lbl = new Label(text);
         lbl.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 11px;");
 
-        HBox row = new HBox(6, swatch, lbl);
+        HBox row = new HBox(5, swatch, lbl);
         row.setAlignment(Pos.CENTER_LEFT);
         return row;
     }
