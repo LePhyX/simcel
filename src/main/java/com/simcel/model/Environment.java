@@ -21,9 +21,9 @@ package com.simcel.model;
  */
 public class Environment {
 
-    private WindDirection direction;
-    private int windStrength;
-    private int humidity;
+    private volatile WindDirection direction;
+    private volatile int windStrength;
+    private volatile int humidity;
 
     /**
      * Crée un environnement par défaut : vent nul vers le Nord, humidité 50 %.

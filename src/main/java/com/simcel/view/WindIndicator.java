@@ -26,13 +26,17 @@ import javafx.scene.text.FontWeight;
  *   <li>Le taux d'humidité.</li>
  * </ul>
  *
- * <p>Le composant est statique : il lit l'{@link Environment} une seule fois
- * à la construction et ne se met pas à jour pendant la simulation.</p>
+ * <p>Appeler {@link #refresh(Environment)} après chaque modification de
+ * l'environnement pour mettre à jour l'affichage.</p>
  */
 public class WindIndicator extends VBox {
 
     private static final double SIZE = 96.0;
     private static final double R    = 32.0;
+
+    private final Canvas compass;
+    private final Label  lblStrength;
+    private final Label  lblHumidity;
 
     /**
      * Crée l'indicateur à partir des conditions météorologiques données.
@@ -46,19 +50,52 @@ public class WindIndicator extends VBox {
         Label title = new Label("Conditions météo");
         title.getStyleClass().add("label-title");
 
-        Canvas compass = new Canvas(SIZE, SIZE);
+        compass = new Canvas(SIZE, SIZE);
         drawCompass(compass.getGraphicsContext2D(), env);
 
         VBox compassBox = new VBox(compass);
         compassBox.setAlignment(Pos.CENTER);
 
+        Label forceLbl = new Label("Force : ");
+        forceLbl.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 10px;");
+        lblStrength = new Label(buildStrengthText(env));
+        lblStrength.setStyle("-fx-text-fill: #ff6633; -fx-font-size: 10px;");
+        HBox strengthRow = new HBox(3, forceLbl, lblStrength);
+        strengthRow.setAlignment(Pos.CENTER_LEFT);
+
+        lblHumidity = new Label(buildHumidityText(env));
+        lblHumidity.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 10px;");
+
         getChildren().addAll(title, new Separator(), compassBox,
-                buildStrengthRow(env), buildHumidityRow(env));
+                strengthRow, new HBox(lblHumidity));
+    }
+
+    /**
+     * Redessine la boussole et met à jour les labels.
+     * Doit être appelé depuis le thread JavaFX.
+     *
+     * @param env nouvelles conditions météorologiques
+     */
+    public void refresh(Environment env) {
+        drawCompass(compass.getGraphicsContext2D(), env);
+        lblStrength.setText(buildStrengthText(env));
+        lblHumidity.setText(buildHumidityText(env));
     }
 
     // -------------------------------------------------------------------------
     // Rendu interne
     // -------------------------------------------------------------------------
+
+    private static String buildStrengthText(Environment env) {
+        StringBuilder sb = new StringBuilder();
+        int s = env.getWindStrength();
+        for (int i = 0; i < 5; i++) sb.append(i < s ? "●" : "○");
+        return sb.toString();
+    }
+
+    private static String buildHumidityText(Environment env) {
+        return String.format("Humidité : %d %%", env.getHumidity());
+    }
 
     /** Dessine la boussole complète : cercle, marques, flèche et labels. */
     private static void drawCompass(GraphicsContext gc, Environment env) {
@@ -138,28 +175,5 @@ public class WindIndicator extends VBox {
             gc.strokeLine(ax, ay, ax - hl * Math.cos(angle - ha), ay - hl * Math.sin(angle - ha));
             gc.strokeLine(ax, ay, ax - hl * Math.cos(angle + ha), ay - hl * Math.sin(angle + ha));
         }
-    }
-
-    /** Ligne affichant cinq indicateurs ●/○ pour la force du vent. */
-    private static HBox buildStrengthRow(Environment env) {
-        Label lbl  = new Label("Force : ");
-        lbl.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 10px;");
-
-        StringBuilder sb = new StringBuilder();
-        int s = env.getWindStrength();
-        for (int i = 0; i < 5; i++) sb.append(i < s ? "●" : "○");
-        Label dots = new Label(sb.toString());
-        dots.setStyle("-fx-text-fill: #ff6633; -fx-font-size: 10px;");
-
-        HBox row = new HBox(3, lbl, dots);
-        row.setAlignment(Pos.CENTER_LEFT);
-        return row;
-    }
-
-    /** Ligne affichant le taux d'humidité. */
-    private static HBox buildHumidityRow(Environment env) {
-        Label lbl = new Label(String.format("Humidité : %d %%", env.getHumidity()));
-        lbl.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 10px;");
-        return new HBox(lbl);
     }
 }

@@ -1,7 +1,12 @@
 package com.simcel.view;
 
+import java.util.Scanner;
+
+import com.simcel.controller.SimulationController;
 import com.simcel.model.Cell;
+import com.simcel.model.Environment;
 import com.simcel.model.Grid;
+import com.simcel.model.WindDirection;
 
 /**
  * Vue console de la simulation utilisant les séquences d'échappement ANSI.
@@ -110,9 +115,121 @@ public class ConsoleView {
                 tick, sain, enFeu, brule, tauxDestruction);
     }
 
+    /**
+     * Lance un thread daemon qui lit les commandes depuis stdin et les traite
+     * via {@link #parseCommand}.
+     *
+     * @param env  environnement à modifier en temps réel
+     * @param ctrl contrôleur dont la vitesse peut être ajustée
+     */
+    public void startCommandListener(Environment env, SimulationController ctrl) {
+        Thread t = new Thread(() -> {
+            try (Scanner scanner = new Scanner(System.in)) {
+                System.out.print("> ");
+                System.out.flush();
+                while (scanner.hasNextLine()) {
+                    parseCommand(scanner.nextLine(), env, ctrl);
+                    System.out.print("> ");
+                    System.out.flush();
+                }
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /**
+     * Analyse et exécute une commande textuelle.
+     *
+     * <p>Méthode package-private pour permettre les tests unitaires directs.</p>
+     *
+     * @param line ligne saisie par l'utilisateur
+     * @param env  environnement cible
+     * @param ctrl contrôleur cible
+     */
+    void parseCommand(String line, Environment env, SimulationController ctrl) {
+        String[] tokens = line.trim().split("\\s+");
+        if (tokens[0].isEmpty()) {
+            return;
+        }
+        switch (tokens[0].toLowerCase()) {
+            case "wind" -> {
+                if (tokens.length < 3) {
+                    System.out.println("Usage : wind <direction> <intensité>");
+                    return;
+                }
+                WindDirection dir;
+                try {
+                    dir = WindDirection.valueOf(tokens[1].toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    System.out.println("Direction invalide. Valeurs acceptées : N, NE, E, SE, S, SO, O, NO");
+                    return;
+                }
+                int strength;
+                try {
+                    strength = Integer.parseInt(tokens[2]);
+                } catch (NumberFormatException e) {
+                    System.out.println("Valeur numérique attendue pour intensité");
+                    return;
+                }
+                if (strength < 0 || strength > 5) {
+                    System.out.println("Intensité invalide. Valeurs acceptées : 0 à 5");
+                    return;
+                }
+                env.setDirection(dir);
+                env.setWindStrength(strength);
+            }
+            case "humidity" -> {
+                if (tokens.length < 2) {
+                    System.out.println("Usage : humidity <valeur>");
+                    return;
+                }
+                int h;
+                try {
+                    h = Integer.parseInt(tokens[1]);
+                } catch (NumberFormatException e) {
+                    System.out.println("Valeur numérique attendue pour humidité");
+                    return;
+                }
+                if (h < 0 || h > 100) {
+                    System.out.println("Humidité invalide. Valeurs acceptées : 0 à 100");
+                    return;
+                }
+                env.setHumidity(h);
+            }
+            case "speed" -> {
+                if (tokens.length < 2) {
+                    System.out.println("Usage : speed <ms>");
+                    return;
+                }
+                int ms;
+                try {
+                    ms = Integer.parseInt(tokens[1]);
+                } catch (NumberFormatException e) {
+                    System.out.println("Valeur numérique attendue pour speed");
+                    return;
+                }
+                ctrl.setTickDelay(ms);
+            }
+            case "help" -> printHelp();
+            default -> System.out.println("Commande inconnue. Tapez 'help' pour la liste des commandes.");
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Méthodes privées
     // -------------------------------------------------------------------------
+    /**
+     * Affiche la liste des commandes disponibles.
+     */
+    private void printHelp() {
+        System.out.println("Commandes disponibles :");
+        System.out.println("  wind <direction> <intensité>  — Modifier le vent        (ex : wind NE 3)");
+        System.out.println("  humidity <valeur>             — Modifier l'humidité     (0–100)");
+        System.out.println("  speed <ms>                    — Modifier la vitesse     (délai en ms)");
+        System.out.println("  help                          — Afficher ce message");
+    }
+
     /**
      * Retourne la séquence ANSI correspondant à l'état de la cellule.
      */
