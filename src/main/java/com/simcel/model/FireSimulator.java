@@ -102,7 +102,7 @@ public class FireSimulator {
      * @param tgt  cellule cible (candidate à l'inflammation)
      * @return probabilité dans {@code [0.0, 1.0]}
      */
-    public double computeInflammationProbability(int srcX, int srcY, int tgtX, int tgtY, Cell tgt) {
+    private double computeInflammationProbability(int srcX, int srcY, int tgtX, int tgtY, Cell tgt) {
         double base = tgt.getType().getInflammability();
         double windFactor = applyWindFactor(tgtX - srcX, tgtY - srcY);
         double p = applyHumidityFactor(base * windFactor);
@@ -128,30 +128,12 @@ public class FireSimulator {
     }
 
     /**
-     * Retourne le numéro du tick courant (0 avant le premier tick).
-     *
-     * @return tick courant, &ge; 0
-     */
-    public int getCurrentTick() {
-        return currentTick;
-    }
-
-    /**
      * Enregistre un observateur qui sera notifié à chaque tick.
      *
      * @param listener observateur à ajouter, non {@code null}
      */
     public void addListener(SimulationListener listener) {
         listeners.add(listener);
-    }
-
-    /**
-     * Retire un observateur précédemment enregistré.
-     *
-     * @param listener observateur à retirer
-     */
-    public void removeListener(SimulationListener listener) {
-        listeners.remove(listener);
     }
 
     /**
@@ -174,15 +156,6 @@ public class FireSimulator {
         if (currentTick > 0) currentTick--;
         notifyListeners(currentTick);
         return true;
-    }
-
-    /**
-     * Indique si au moins un état précédent est disponible pour {@link #stepBack()}.
-     *
-     * @return {@code true} si l'historique est non vide
-     */
-    public boolean canStepBack() {
-        return !history.isEmpty();
     }
 
     /**
