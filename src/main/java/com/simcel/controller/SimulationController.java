@@ -110,6 +110,20 @@ public class SimulationController {
     public synchronized void reset() {
         stop();
         simulator.getGrid().reset();
+        simulator.clearHistory();
+    }
+
+    /**
+     * Recule la simulation d'un tick en restaurant l'état précédent.
+     *
+     * <p>Sans effet si la simulation est {@link SimulationState#RUNNING} ou
+     * si l'historique est vide.</p>
+     *
+     * @return {@code true} si un état précédent a été restauré
+     */
+    public synchronized boolean stepBack() {
+        if (state == SimulationState.RUNNING) return false;
+        return simulator.stepBack();
     }
 
     /**
