@@ -13,7 +13,9 @@ package com.simcel.model;
  * Le type de terrain ne change jamais au cours de la simulation ; seuls l'état
  * et le temps de combustion évoluent.</p>
  */
-public class Cell {
+public class Cell implements java.io.Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private CellState state;
     private final CellType type;

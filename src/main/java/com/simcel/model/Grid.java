@@ -247,4 +247,45 @@ public class Grid {
     public int getHeight() {
         return height;
     }
+
+    /**
+     * Returns a deep copy of the current cell array for snapshotting.
+     *
+     * @return new {@code Cell[height][width]} array with copied cells
+     */
+    public Cell[][] copyCells() {
+        Cell[][] copy = new Cell[height][width];
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                copy[y][x] = cells[y][x].copy();
+        return copy;
+    }
+
+    /**
+     * Returns a deep copy of the initial cell array for snapshotting.
+     *
+     * @return new {@code Cell[height][width]} array with copied initial cells
+     */
+    public Cell[][] copyInitialCells() {
+        Cell[][] copy = new Cell[height][width];
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                copy[y][x] = initialCells[y][x].copy();
+        return copy;
+    }
+
+    /**
+     * Restores both the current and initial cell arrays from saved copies.
+     *
+     * @param savedCells        current cell states to restore
+     * @param savedInitialCells initial cell states to restore
+     */
+    public void restoreState(Cell[][] savedCells, Cell[][] savedInitialCells) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                cells[y][x]        = savedCells[y][x].copy();
+                initialCells[y][x] = savedInitialCells[y][x].copy();
+            }
+        }
+    }
 }

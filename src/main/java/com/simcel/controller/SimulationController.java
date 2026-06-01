@@ -1,10 +1,14 @@
 package com.simcel.controller;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import com.simcel.model.FireSimulator;
+import com.simcel.model.SimulationIO;
+import com.simcel.model.SimulationSnapshot;
 import com.simcel.model.SimulationState;
 
 /**
@@ -169,6 +173,38 @@ public class SimulationController {
      */
     public int getTickDelay() {
         return tickDelay;
+    }
+
+    /**
+     * Saves the current simulation state to a binary file.
+     *
+     * @param file destination file
+     * @throws IOException if writing fails
+     */
+    public synchronized void saveToFile(File file) throws IOException {
+        SimulationSnapshot snapshot = simulator.createSnapshot();
+        SimulationIO.save(file, snapshot);
+    }
+
+    /**
+     * Restores the simulation state from a binary file.
+     *
+     * <p>Pauses the simulation first if it is running, then applies the
+     * snapshot and transitions to {@link SimulationState#PAUSED}.</p>
+     *
+     * @param file source file
+     * @throws IOException            if reading fails
+     * @throws ClassNotFoundException if the file format is incompatible
+     * @throws IllegalArgumentException if the snapshot grid dimensions differ from the current grid
+     */
+    public synchronized void loadFromFile(File file) throws IOException, ClassNotFoundException {
+        if (state == SimulationState.RUNNING) {
+            pause();
+        }
+        SimulationSnapshot snapshot = SimulationIO.load(file);
+        simulator.applySnapshot(snapshot);
+        currentTick = snapshot.getTick();
+        state = SimulationState.PAUSED;
     }
 
     // -------------------------------------------------------------------------
