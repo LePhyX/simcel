@@ -81,3 +81,34 @@
 .grid-pane {
     -fx-background-color: #0f0f1e;
 }
+
+/* ---------- Mode édition ---------- */
+.edit-toggle {
+    -fx-background-color: #2d2d55;
+    -fx-text-fill: #aaaaee;
+}
+
+.edit-toggle:selected {
+    -fx-background-color: #3a5a3a;
+    -fx-text-fill: #90ee90;
+    -fx-border-color: #90ee90;
+    -fx-border-width: 1;
+    -fx-border-radius: 5;
+}
+
+.edit-toggle:disabled {
+    -fx-opacity: 0.35;
+}
+
+.tool-btn {
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-padding: 4 6 4 6;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+}
+
+.label-hint {
+    -fx-font-size: 10px;
+    -fx-text-fill: #7777aa;
+}
