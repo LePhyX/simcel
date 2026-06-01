@@ -1,6 +1,8 @@
 package com.simcel.view;
 
+import com.simcel.model.Cell;
 import com.simcel.model.CellState;
+import com.simcel.model.CellType;
 import com.simcel.model.Grid;
 import com.simcel.model.SimulationListener;
 import javafx.application.Platform;
@@ -15,33 +17,49 @@ import javafx.scene.paint.Color;
  * redessiner automatiquement après chaque tick. Le rendu est toujours exécuté
  * sur le thread JavaFX via {@link Platform#runLater}.</p>
  *
- * <p><b>Thread safety :</b> un snapshot des états est capturé sur le thread
+ * <p><b>Thread safety :</b> un snapshot des couleurs est capturé sur le thread
  * de simulation avant d'être transmis au thread JavaFX, évitant ainsi toute
  * race condition avec le tick suivant.</p>
  *
+ * <p><b>Couleurs :</b> les cellules à l'état {@link CellState#SAIN} sont
+ * colorées selon leur {@link CellType} (via {@link CellType#getHealthyColor()})
+ * afin de distinguer visuellement les types de terrain. Les autres états
+ * utilisent la couleur de {@link CellState#getColor()}.</p>
+ *
  * <p><b>Performance :</b> les objets {@link Color} sont pré-calculés une fois
- * par état ({@link #STATE_COLORS}) pour éviter le parsing hexadécimal à chaque
- * cellule à chaque tick.</p>
+ * par état/type pour éviter le parsing hexadécimal à chaque cellule à chaque tick.</p>
  */
 public final class GridView extends Canvas implements SimulationListener {
 
     /**
-     * Cache des couleurs JavaFX indexé par {@link CellState#ordinal()}.
-     * Calculé une seule fois au chargement de la classe.
+     * Cache des couleurs pour les états non-SAIN, indexé par {@link CellState#ordinal()}.
      */
     private static final Color[] STATE_COLORS;
+
+    /**
+     * Cache des couleurs pour les cellules {@link CellState#SAIN},
+     * indexé par {@link CellType#ordinal()}.
+     */
+    private static final Color[] TYPE_SAIN_COLORS;
+
     static {
         CellState[] states = CellState.values();
         STATE_COLORS = new Color[states.length];
         for (CellState s : states) {
             STATE_COLORS[s.ordinal()] = Color.web(s.getColor());
         }
+
+        CellType[] types = CellType.values();
+        TYPE_SAIN_COLORS = new Color[types.length];
+        for (CellType t : types) {
+            TYPE_SAIN_COLORS[t.ordinal()] = Color.web(t.getHealthyColor());
+        }
     }
 
     /** Fond de la grille visible entre les cellules (joue le rôle de grille). */
-    private static final Color GRID_BG    = Color.web("#0a0a1a");
+    private static final Color GRID_BG   = Color.web("#0a0a1a");
     /** Espace entre cellules en pixels. */
-    private static final double GRID_GAP  = 1.0;
+    private static final double GRID_GAP = 1.0;
 
     private final double cellSize;
 
@@ -62,15 +80,15 @@ public final class GridView extends Canvas implements SimulationListener {
     // -------------------------------------------------------------------------
 
     /**
-     * Appelé après chaque tick : capture un snapshot sur le thread de
-     * simulation, puis délègue le rendu au thread JavaFX.
+     * Appelé après chaque tick : capture un snapshot des couleurs sur le thread
+     * de simulation, puis délègue le rendu au thread JavaFX.
      *
      * @param tick numéro du tick
      * @param grid grille mise à jour
      */
     @Override
     public void onTick(int tick, Grid grid) {
-        CellState[][] snapshot = snapshot(grid);
+        Color[][] snapshot = snapshot(grid);
         Platform.runLater(() -> draw(snapshot));
     }
 
@@ -122,17 +140,29 @@ public final class GridView extends Canvas implements SimulationListener {
     // Rendu interne
     // -------------------------------------------------------------------------
 
-    private CellState[][] snapshot(Grid grid) {
+    private Color[][] snapshot(Grid grid) {
         int w = grid.getWidth();
         int h = grid.getHeight();
-        CellState[][] snap = new CellState[w][h];
+        Color[][] snap = new Color[w][h];
         for (int x = 0; x < w; x++)
             for (int y = 0; y < h; y++)
-                snap[x][y] = grid.getCell(x, y).getState();
+                snap[x][y] = colorOf(grid.getCell(x, y));
         return snap;
     }
 
-    private void draw(CellState[][] snapshot) {
+    /**
+     * Retourne la couleur d'affichage d'une cellule.
+     * Les cellules {@link CellState#SAIN} utilisent la couleur de leur
+     * {@link CellType}; les autres utilisent la couleur de leur {@link CellState}.
+     */
+    private Color colorOf(Cell cell) {
+        if (cell.getState() == CellState.SAIN) {
+            return TYPE_SAIN_COLORS[cell.getType().ordinal()];
+        }
+        return STATE_COLORS[cell.getState().ordinal()];
+    }
+
+    private void draw(Color[][] snapshot) {
         GraphicsContext gc = getGraphicsContext2D();
         double w = getWidth();
         double h = getHeight();
@@ -140,13 +170,12 @@ public final class GridView extends Canvas implements SimulationListener {
         int rows = snapshot[0].length;
         double fill = cellSize - GRID_GAP;
 
-        // Fond sombre servant de grille entre les cellules
         gc.setFill(GRID_BG);
         gc.fillRect(0, 0, w, h);
 
         for (int x = 0; x < cols; x++) {
             for (int y = 0; y < rows; y++) {
-                gc.setFill(STATE_COLORS[snapshot[x][y].ordinal()]);
+                gc.setFill(snapshot[x][y]);
                 gc.fillRect(x * cellSize, y * cellSize, fill, fill);
             }
         }
