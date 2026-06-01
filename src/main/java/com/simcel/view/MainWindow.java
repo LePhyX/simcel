@@ -46,9 +46,10 @@ import javafx.stage.Stage;
  */
 public class MainWindow {
 
-    private static final double CELL_SIZE    = 14.0;
-    private static final double RIGHT_WIDTH  = 300.0;
-    private static final double CHART_HEIGHT = 200.0;
+    private static final double CELL_SIZE         = 14.0;
+    private static final double RIGHT_WIDTH       = 300.0;
+    private static final double BOTTOM_CHART_W    = 560.0;
+    private static final double BOTTOM_CHART_H    = 150.0;
 
     private static final double ZOOM_FACTOR = 1.15;
     private static final double MIN_SCALE   = 0.2;
@@ -150,7 +151,7 @@ public class MainWindow {
         Environment env = simulator.getEnvironment();
         gridView        = new GridView(grid, CELL_SIZE);
         statisticsPanel = new StatisticsPanel();
-        chartView       = new ChartView(RIGHT_WIDTH - 20, CHART_HEIGHT);
+        chartView       = new ChartView(BOTTOM_CHART_W, BOTTOM_CHART_H);
         legendPanel     = new LegendPanel();
         windIndicator   = new WindIndicator(env);
 
@@ -159,9 +160,15 @@ public class MainWindow {
         simulator.addListener(chartView);
         simulator.addListener(stoppingListener());
 
+        HBox infoRow = new HBox(16, chartView, windIndicator);
+        infoRow.getStyleClass().add("bottom-info-bar");
+
+        VBox bottomBar = new VBox(infoRow, statisticsPanel);
+
         BorderPane root = new BorderPane();
         root.setTop(legendPanel);
         root.setCenter(buildGridPane());
+        root.setBottom(bottomBar);
         root.setRight(buildRightPanel());
 
         Scene scene = new Scene(root);
@@ -443,7 +450,7 @@ public class MainWindow {
                 lblSpeed, sliderSpeed);
         controls.setPadding(new Insets(10));
 
-        VBox right = new VBox(8, controls, buildEditSection(), statisticsPanel, chartView, windIndicator);
+        VBox right = new VBox(8, controls, buildEditSection());
         right.getStyleClass().add("right-panel");
         right.setPadding(new Insets(8));
         right.setPrefWidth(RIGHT_WIDTH);
