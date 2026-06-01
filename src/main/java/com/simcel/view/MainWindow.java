@@ -160,6 +160,7 @@ public class MainWindow {
         simulator.addListener(stoppingListener());
 
         BorderPane root = new BorderPane();
+        root.setTop(legendPanel);
         root.setCenter(buildGridPane());
         root.setRight(buildRightPanel());
 
@@ -442,9 +443,7 @@ public class MainWindow {
                 lblSpeed, sliderSpeed);
         controls.setPadding(new Insets(10));
 
-        HBox legendRow = new HBox(8, legendPanel, windIndicator);
-
-        VBox right = new VBox(8, controls, buildEditSection(), statisticsPanel, chartView, legendRow);
+        VBox right = new VBox(8, controls, buildEditSection(), statisticsPanel, chartView, windIndicator);
         right.getStyleClass().add("right-panel");
         right.setPadding(new Insets(8));
         right.setPrefWidth(RIGHT_WIDTH);
