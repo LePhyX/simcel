@@ -72,7 +72,7 @@ public class Main extends Application {
      * @throws InterruptedException si le thread principal est interrompu
      * pendant l'attente de fin de simulation
      */
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         if (args.length > 0 && args[0].equals("--headless")) {
             runCLI(args);
         } else {
@@ -90,7 +90,7 @@ public class Main extends Application {
      * @throws InterruptedException si le thread est interrompu pendant
      * l'attente
      */
-    private static void runCLI(String[] args) throws InterruptedException {
+    private static void runCLI(String[] args) {
         int width = 40;
         int height = 20;
         int maxTicks = 100;
@@ -149,9 +149,8 @@ public class Main extends Application {
         view.printLegend();
         System.out.println("Simulation démarrée. Tapez 'help' pour la liste des commandes.");
         view.startCommandListener(env, ctrl);
-        Thread.sleep(1000);
         ctrl.start();
-        done.await();
+        try { done.await(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         ctrl.stop();
 
         System.out.println("\n=== Simulation terminée ===");
