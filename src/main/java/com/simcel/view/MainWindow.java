@@ -12,6 +12,7 @@ import com.simcel.model.WindDirection;
 import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Point2D;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
@@ -53,12 +54,18 @@ public class MainWindow {
 
     private static final double CELL_SIZE         = 14.0;
     private static final double RIGHT_WIDTH       = 300.0;
-    private static final double BOTTOM_CHART_W    = 560.0;
-    private static final double BOTTOM_CHART_H    = 150.0;
+    private static final double RIGHT_CHART_W     = 280.0;
+    private static final double RIGHT_CHART_H     = 220.0;
 
     private static final double ZOOM_FACTOR = 1.15;
     private static final double MIN_SCALE   = 0.2;
     private static final double MAX_SCALE   = 8.0;
+
+    private static final double DENSITY_FORET   = 0.60;
+    private static final double DENSITY_PRAIRIE = 0.20;
+    private static final double DENSITY_BROUSS  = 0.10;
+    private static final double DENSITY_HUMIDE  = 0.05;
+    private static final double DENSITY_URBAINE = 0.05;
 
     // -------------------------------------------------------------------------
     // Outils d'édition
@@ -119,15 +126,16 @@ public class MainWindow {
     // Composants principaux
     // -------------------------------------------------------------------------
 
-    private final FireSimulator        simulator;
-    private final SimulationController controller;
-    private final Grid                 grid;
+    private FireSimulator        simulator;
+    private SimulationController controller;
+    private Grid                 grid;
 
     private GridView        gridView;
     private StatisticsPanel statisticsPanel;
     private ChartView       chartView;
     private LegendPanel     legendPanel;
     private WindIndicator   windIndicator;
+    private BorderPane      root;
 
     private final Button btnStart    = new Button("▶  Démarrer");
     private final Button btnPause    = new Button("⏸  Pause");
@@ -158,7 +166,7 @@ public class MainWindow {
         Environment env = simulator.getEnvironment();
         gridView        = new GridView(grid, CELL_SIZE);
         statisticsPanel = new StatisticsPanel();
-        chartView       = new ChartView(BOTTOM_CHART_W, BOTTOM_CHART_H);
+        chartView       = new ChartView(RIGHT_CHART_W, RIGHT_CHART_H);
         legendPanel     = new LegendPanel();
         windIndicator   = new WindIndicator(env);
 
@@ -167,16 +175,17 @@ public class MainWindow {
         simulator.addListener(chartView);
         simulator.addListener(stoppingListener());
 
-        HBox infoRow = new HBox(16, chartView, windIndicator);
-        infoRow.getStyleClass().add("bottom-info-bar");
+        VBox rightBar = new VBox(8, chartView, windIndicator);
+        rightBar.getStyleClass().add("right-panel");
+        rightBar.setPadding(new Insets(8));
 
-        VBox bottomBar = new VBox(infoRow, statisticsPanel);
+        VBox bottomBar = new VBox(buildRightPanel(), statisticsPanel);
 
-        BorderPane root = new BorderPane();
+        root = new BorderPane();
         root.setTop(legendPanel);
         root.setCenter(buildGridPane());
         root.setBottom(bottomBar);
-        root.setRight(buildRightPanel());
+        root.setRight(rightBar);
 
         Scene scene = new Scene(root);
         scene.getStylesheets().add(
@@ -413,10 +422,83 @@ public class MainWindow {
     }
 
     // -------------------------------------------------------------------------
+    // Réinitialisation de la simulation avec une nouvelle grille
+    // -------------------------------------------------------------------------
+
+    private void reinitialize(int width, int height) {
+        controller.stop();
+        if (editMode) {
+            btnEditToggle.setSelected(false);
+            toggleEditMode(false);
+        }
+
+        Grid newGrid = new Grid(width, height);
+        newGrid.initRandom(DENSITY_FORET, DENSITY_PRAIRIE, DENSITY_BROUSS, DENSITY_HUMIDE, DENSITY_URBAINE);
+        newGrid.setFire(width / 2, height / 2);
+        newGrid.saveInitialState();
+
+        Environment env  = simulator.getEnvironment();
+        int         delay = controller.getTickDelay();
+
+        simulator  = new FireSimulator(newGrid, env);
+        controller = new SimulationController(simulator, delay);
+        grid       = newGrid;
+
+        gridView = new GridView(grid, CELL_SIZE);
+        simulator.addListener(gridView);
+        simulator.addListener(statisticsPanel);
+        simulator.addListener(chartView);
+        simulator.addListener(stoppingListener());
+
+        root.setCenter(buildGridPane());
+        statisticsPanel.reset();
+        chartView.clear();
+        setIdleState();
+    }
+
+    private VBox buildGridSection() {
+        Label titleGrid = new Label("Taille de la grille");
+        titleGrid.getStyleClass().add("label-title");
+
+        Label lblWidth = new Label("Largeur : " + grid.getWidth());
+        Slider sliderWidth = new Slider(10, 300, grid.getWidth());
+        sliderWidth.setShowTickLabels(true);
+        sliderWidth.setShowTickMarks(true);
+        sliderWidth.setMajorTickUnit(100);
+        sliderWidth.setMinorTickCount(9);
+        sliderWidth.setSnapToTicks(false);
+        sliderWidth.valueProperty().addListener((obs, old, val) ->
+                lblWidth.setText("Largeur : " + val.intValue()));
+
+        Label lblHeight = new Label("Hauteur : " + grid.getHeight());
+        Slider sliderHeight = new Slider(10, 200, grid.getHeight());
+        sliderHeight.setShowTickLabels(true);
+        sliderHeight.setShowTickMarks(true);
+        sliderHeight.setMajorTickUnit(50);
+        sliderHeight.setMinorTickCount(9);
+        sliderHeight.setSnapToTicks(false);
+        sliderHeight.valueProperty().addListener((obs, old, val) ->
+                lblHeight.setText("Hauteur : " + val.intValue()));
+
+        Button btnNew = new Button("↺  Nouvelle grille");
+        btnNew.setMaxWidth(Double.MAX_VALUE);
+        btnNew.setOnAction(e ->
+                reinitialize((int) sliderWidth.getValue(), (int) sliderHeight.getValue()));
+
+        VBox section = new VBox(6,
+                titleGrid,
+                lblWidth, sliderWidth,
+                lblHeight, sliderHeight,
+                btnNew);
+        section.setPadding(new Insets(0, 10, 0, 10));
+        return section;
+    }
+
+    // -------------------------------------------------------------------------
     // Panneau de contrôle
     // -------------------------------------------------------------------------
 
-    private VBox buildRightPanel() {
+    private HBox buildRightPanel() {
         for (Button b : new Button[]{btnStart, btnPause, btnStep, btnStepBack, btnReset, btnSave, btnLoad}) {
             b.setMaxWidth(Double.MAX_VALUE);
         }
@@ -502,16 +584,27 @@ public class MainWindow {
                 lblSpeed, sliderSpeed,
                 new Separator(),
                 btnSave, btnLoad);
-        controls.setPadding(new Insets(10));
+        controls.setPadding(new Insets(0, 10, 0, 10));
 
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
+        VBox sectGrid = buildGridSection();
+        VBox sectEnv  = buildEnvSection();
+        VBox sectEdit = buildEditSection();
+        HBox.setHgrow(controls,  Priority.ALWAYS);
+        HBox.setHgrow(sectGrid,  Priority.ALWAYS);
+        HBox.setHgrow(sectEnv,   Priority.ALWAYS);
+        HBox.setHgrow(sectEdit,  Priority.ALWAYS);
 
-        VBox right = new VBox(8, controls, buildEnvSection(), buildEditSection(), spacer);
-        right.getStyleClass().add("right-panel");
-        right.setPadding(new Insets(8));
-        right.setPrefWidth(RIGHT_WIDTH);
-        return right;
+        HBox bottom = new HBox(0,
+                controls,
+                new Separator(Orientation.VERTICAL),
+                sectGrid,
+                new Separator(Orientation.VERTICAL),
+                sectEnv,
+                new Separator(Orientation.VERTICAL),
+                sectEdit);
+        bottom.getStyleClass().add("right-panel");
+        bottom.setPadding(new Insets(8));
+        return bottom;
     }
 
     /**
@@ -560,7 +653,7 @@ public class MainWindow {
         titleEnv.getStyleClass().add("label-title");
 
         VBox section = new VBox(6,
-                new Separator(), titleEnv,
+                titleEnv,
                 lblDir, cbDirection,
                 lblStrength, sliderStrength,
                 lblHumidity, sliderHumidity);
@@ -613,6 +706,6 @@ public class MainWindow {
         Label titleEdit = new Label("Edition du terrain");
         titleEdit.getStyleClass().add("label-title");
 
-        return new VBox(6, new Separator(), titleEdit, btnEditToggle, editToolsBox);
+        return new VBox(6, titleEdit, btnEditToggle, editToolsBox);
     }
 }
