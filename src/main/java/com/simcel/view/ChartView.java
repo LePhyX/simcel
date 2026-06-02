@@ -23,17 +23,19 @@ import java.util.List;
  */
 public class ChartView extends Canvas implements SimulationListener {
 
-    private static final int    MAX_POINTS  = 300;
-    private static final double PADDING     = 30.0;
-    private static final Color  COLOR_SAIN  = Color.web("#228B22");
-    private static final Color  COLOR_FEU   = Color.web("#FF4500");
-    private static final Color  COLOR_BRULE = Color.web("#888888");
+    private static final int    MAX_POINTS       = 300;
+    private static final double PADDING          = 30.0;
+    private static final int    MIN_OBSERVED_MAX = 1;
+    private static final Color  BG_COLOR         = Color.web("#1a1a2e");
+    private static final Color  COLOR_SAIN       = Color.web("#228B22");
+    private static final Color  COLOR_FEU        = Color.web("#FF4500");
+    private static final Color  COLOR_BRULE      = Color.web("#888888");
 
     private final List<Integer> dataSain  = new ArrayList<>();
     private final List<Integer> dataFeu   = new ArrayList<>();
     private final List<Integer> dataBrule = new ArrayList<>();
 
-    private int observedMax = 1;
+    private int observedMax = MIN_OBSERVED_MAX;
 
     /**
      * Crée le graphique avec les dimensions données.
@@ -90,7 +92,7 @@ public class ChartView extends Canvas implements SimulationListener {
         dataSain.clear();
         dataFeu.clear();
         dataBrule.clear();
-        observedMax = 1;
+        observedMax = MIN_OBSERVED_MAX;
         drawEmpty();
     }
 
@@ -128,8 +130,12 @@ public class ChartView extends Canvas implements SimulationListener {
         }
     }
 
+    /**
+     * Recalcule {@link #observedMax} en parcourant toutes les séries.
+     * Appelé après la suppression d'un point pour que l'axe Y reste correct.
+     */
     private void recomputeObservedMax() {
-        int max = 1;
+        int max = MIN_OBSERVED_MAX;
         for (int i = 0; i < dataSain.size(); i++) {
             max = Math.max(max, Math.max(dataSain.get(i), Math.max(dataFeu.get(i), dataBrule.get(i))));
         }
@@ -139,7 +145,7 @@ public class ChartView extends Canvas implements SimulationListener {
     /** Dessine le fond et les axes sans aucune donnée (état initial ou après {@link #clear()}). */
     private void drawEmpty() {
         GraphicsContext gc = getGraphicsContext2D();
-        gc.setFill(Color.web("#1a1a2e"));
+        gc.setFill(BG_COLOR);
         gc.fillRect(0, 0, getWidth(), getHeight());
         drawAxes(gc);
         drawLegend(gc);
@@ -151,7 +157,7 @@ public class ChartView extends Canvas implements SimulationListener {
         double w = getWidth();
         double h = getHeight();
 
-        gc.setFill(Color.web("#1a1a2e"));
+        gc.setFill(BG_COLOR);
         gc.fillRect(0, 0, w, h);
 
         drawAxes(gc);

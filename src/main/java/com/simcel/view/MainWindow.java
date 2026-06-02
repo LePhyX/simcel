@@ -30,6 +30,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 /**
@@ -133,6 +134,8 @@ public class MainWindow {
     private final Button btnStep     = new Button("⏭  Pas à pas");
     private final Button btnStepBack = new Button("⏮  Pas en arrière");
     private final Button btnReset    = new Button("↺  Réinitialiser");
+    private final Button btnSave     = new Button("💾  Sauvegarder");
+    private final Button btnLoad     = new Button("📂  Charger");
 
     /**
      * Crée la fenêtre principale.
@@ -400,12 +403,21 @@ public class MainWindow {
         }
     }
 
+    private void showError(String message) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.ERROR);
+        alert.setTitle("Erreur");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
     // -------------------------------------------------------------------------
     // Panneau de contrôle
     // -------------------------------------------------------------------------
 
     private VBox buildRightPanel() {
-        for (Button b : new Button[]{btnStart, btnPause, btnStep, btnStepBack, btnReset}) {
+        for (Button b : new Button[]{btnStart, btnPause, btnStep, btnStepBack, btnReset, btnSave, btnLoad}) {
             b.setMaxWidth(Double.MAX_VALUE);
         }
         setIdleState();
@@ -436,6 +448,42 @@ public class MainWindow {
             setIdleState();
         });
 
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Simulation SimCel (*.simcel)", "*.simcel"));
+
+        btnSave.setOnAction(e -> {
+            fileChooser.setTitle("Sauvegarder la simulation");
+            java.io.File file = fileChooser.showSaveDialog(null);
+            if (file == null) return;
+            if (!file.getName().endsWith(".simcel")) {
+                file = new java.io.File(file.getAbsolutePath() + ".simcel");
+            }
+            try {
+                controller.saveToFile(file);
+            } catch (java.io.IOException ex) {
+                showError("Erreur lors de la sauvegarde : " + ex.getMessage());
+            }
+        });
+
+        btnLoad.setOnAction(e -> {
+            fileChooser.setTitle("Charger une simulation");
+            java.io.File file = fileChooser.showOpenDialog(null);
+            if (file == null) return;
+            try {
+                controller.loadFromFile(file);
+                gridView.refresh(grid);
+                statisticsPanel.reset();
+                chartView.clear();
+                windIndicator.refresh(simulator.getEnvironment());
+                setIdleState();
+            } catch (java.io.IOException | ClassNotFoundException ex) {
+                showError("Erreur lors du chargement : " + ex.getMessage());
+            } catch (IllegalArgumentException ex) {
+                showError("Fichier incompatible : " + ex.getMessage());
+            }
+        });
+
         Label lblSpeed = new Label("Vitesse (ms/tick) :");
         Slider sliderSpeed = new Slider(50, 1000, controller.getTickDelay());
         sliderSpeed.setShowTickLabels(true);
@@ -451,7 +499,9 @@ public class MainWindow {
                 titleControls, new Separator(),
                 btnStart, btnPause, btnStep, btnStepBack, btnReset,
                 new Separator(),
-                lblSpeed, sliderSpeed);
+                lblSpeed, sliderSpeed,
+                new Separator(),
+                btnSave, btnLoad);
         controls.setPadding(new Insets(10));
 
         Region spacer = new Region();

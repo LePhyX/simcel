@@ -18,6 +18,9 @@ import java.util.Random;
  */
 public class Grid {
 
+    /** Tolérance flottante pour la validation de la somme des densités. */
+    private static final double DENSITY_EPSILON = 1e-9;
+
     private final int width;
     private final int height;
     private final Cell[][] cells;
@@ -140,7 +143,7 @@ public class Grid {
             double densityUrbaine) {
         double sum = densityForest + densityPrairie + densityBroussailles
                 + densityHumide + densityUrbaine;
-        if (sum > 1.0 + 1e-9) {
+        if (sum > 1.0 + DENSITY_EPSILON) {
             throw new IllegalArgumentException(
                     "La somme des densités ne doit pas dépasser 1.0 (valeur reçue : " + sum + ")");
         }
@@ -246,5 +249,46 @@ public class Grid {
      */
     public int getHeight() {
         return height;
+    }
+
+    /**
+     * Returns a deep copy of the current cell array for snapshotting.
+     *
+     * @return new {@code Cell[height][width]} array with copied cells
+     */
+    public Cell[][] copyCells() {
+        Cell[][] copy = new Cell[height][width];
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                copy[y][x] = cells[y][x].copy();
+        return copy;
+    }
+
+    /**
+     * Returns a deep copy of the initial cell array for snapshotting.
+     *
+     * @return new {@code Cell[height][width]} array with copied initial cells
+     */
+    public Cell[][] copyInitialCells() {
+        Cell[][] copy = new Cell[height][width];
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                copy[y][x] = initialCells[y][x].copy();
+        return copy;
+    }
+
+    /**
+     * Restores both the current and initial cell arrays from saved copies.
+     *
+     * @param savedCells        current cell states to restore
+     * @param savedInitialCells initial cell states to restore
+     */
+    public void restoreState(Cell[][] savedCells, Cell[][] savedInitialCells) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                cells[y][x]        = savedCells[y][x].copy();
+                initialCells[y][x] = savedInitialCells[y][x].copy();
+            }
+        }
     }
 }
