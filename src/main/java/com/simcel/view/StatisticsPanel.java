@@ -19,6 +19,8 @@ import javafx.scene.layout.HBox;
  */
 public class StatisticsPanel extends HBox implements SimulationListener {
 
+    private static final double SEPARATOR_HEIGHT = 20.0;
+
     private final Label lblTick        = new Label("Tick : 0");
     private final Label lblSain        = new Label("Sains : —");
     private final Label lblFeu         = new Label("En feu : —");
@@ -79,11 +81,12 @@ public class StatisticsPanel extends HBox implements SimulationListener {
         });
     }
 
+    /** Aucune action requise à la fin de la simulation. */
     @Override
     public void onSimulationEnd() {}
 
     /**
-     * Remet les labels à leur état initial.
+     * Remet les labels à leur état initial (tirets).
      * Doit être appelé depuis le thread JavaFX.
      */
     public void reset() {
@@ -94,9 +97,10 @@ public class StatisticsPanel extends HBox implements SimulationListener {
         lblDestruction.setText("Destruction : —");
     }
 
+    /** Crée un séparateur vertical de hauteur fixe pour la barre de stats. */
     private static Separator vSep() {
         Separator s = new Separator(Orientation.VERTICAL);
-        s.setMinHeight(20);
+        s.setMinHeight(SEPARATOR_HEIGHT);
         return s;
     }
 }

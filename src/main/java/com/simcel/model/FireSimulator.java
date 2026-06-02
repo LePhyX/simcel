@@ -30,7 +30,10 @@ import java.util.Set;
  */
 public class FireSimulator {
 
-    private static final int MAX_HISTORY = 100;
+    /** Nombre maximum d'états conservés pour le retour en arrière. */
+    private static final int    MAX_HISTORY     = 100;
+    /** Diviseur de l'intensité du vent dans le calcul du facteur directionnel. */
+    private static final double MAX_WIND_FACTOR = Environment.MAX_WIND;
 
     private final Grid grid;
     private final Environment environment;
@@ -99,7 +102,7 @@ public class FireSimulator {
      * @param tgt  cellule cible (candidate à l'inflammation)
      * @return probabilité dans {@code [0.0, 1.0]}
      */
-    public double computeInflammationProbability(int srcX, int srcY, int tgtX, int tgtY, Cell tgt) {
+    private double computeInflammationProbability(int srcX, int srcY, int tgtX, int tgtY, Cell tgt) {
         double base = tgt.getType().getInflammability();
         double windFactor = applyWindFactor(tgtX - srcX, tgtY - srcY);
         double p = applyHumidityFactor(base * windFactor);
@@ -125,30 +128,12 @@ public class FireSimulator {
     }
 
     /**
-     * Retourne le numéro du tick courant (0 avant le premier tick).
-     *
-     * @return tick courant, &ge; 0
-     */
-    public int getCurrentTick() {
-        return currentTick;
-    }
-
-    /**
      * Enregistre un observateur qui sera notifié à chaque tick.
      *
      * @param listener observateur à ajouter, non {@code null}
      */
     public void addListener(SimulationListener listener) {
         listeners.add(listener);
-    }
-
-    /**
-     * Retire un observateur précédemment enregistré.
-     *
-     * @param listener observateur à retirer
-     */
-    public void removeListener(SimulationListener listener) {
-        listeners.remove(listener);
     }
 
     /**
@@ -174,15 +159,6 @@ public class FireSimulator {
     }
 
     /**
-     * Indique si au moins un état précédent est disponible pour {@link #stepBack()}.
-     *
-     * @return {@code true} si l'historique est non vide
-     */
-    public boolean canStepBack() {
-        return !history.isEmpty();
-    }
-
-    /**
      * Vide l'historique des états sauvegardés.
      * À appeler lors d'un reset pour éviter de revenir à des états pré-reset.
      */
@@ -190,11 +166,51 @@ public class FireSimulator {
         history.clear();
     }
 
+    /**
+     * Creates a snapshot of the current simulation state.
+     *
+     * @return immutable snapshot capturing grid, environment and tick
+     */
+    public SimulationSnapshot createSnapshot() {
+        return new SimulationSnapshot(
+                grid.getWidth(), grid.getHeight(),
+                grid.copyCells(), grid.copyInitialCells(),
+                environment, currentTick);
+    }
+
+    /**
+     * Restores the simulation to a previously saved snapshot.
+     *
+     * <p>Clears the step-back history and notifies all listeners.</p>
+     *
+     * @param snapshot snapshot to restore, must match current grid dimensions
+     * @throws IllegalArgumentException if grid dimensions do not match
+     */
+    public void applySnapshot(SimulationSnapshot snapshot) {
+        if (snapshot.getWidth() != grid.getWidth() || snapshot.getHeight() != grid.getHeight()) {
+            throw new IllegalArgumentException("Snapshot grid dimensions do not match current grid");
+        }
+        grid.restoreState(snapshot.getCells(), snapshot.getInitialCells());
+        environment.setDirection(snapshot.getWindDirection());
+        environment.setWindStrength(snapshot.getWindStrength());
+        environment.setHumidity(snapshot.getHumidity());
+        currentTick = snapshot.getTick();
+        history.clear();
+        notifyListeners(currentTick);
+    }
+
     // -------------------------------------------------------------------------
     // Méthodes privées
     // -------------------------------------------------------------------------
 
-    /** Sauvegarde l'état courant de la grille dans l'historique. */
+    /**
+     * Sauvegarde l'état courant de la grille dans l'historique.
+     * Le tableau interne utilise la convention {@code snap[x][y]} (ordre inversé
+     * par rapport au stockage interne de {@link Grid}, mais cohérent avec les
+     * accesseurs publics {@code getCell(x, y)}).
+     * Si la capacité maximale {@link #MAX_HISTORY} est atteinte, l'état le plus
+     * ancien est supprimé.
+     */
     private void pushHistory() {
         int w = grid.getWidth();
         int h = grid.getHeight();
@@ -207,7 +223,11 @@ public class FireSimulator {
     }
 
     /**
-     * Capture les états actuels dans un tableau indépendant.
+     * Capture les états courants des cellules dans un tableau indépendant,
+     * utilisé comme référence immuable pendant toute la durée du tick.
+     * Convention : {@code snapshot[x][y]}, cohérente avec {@link #pushHistory()}.
+     *
+     * @return tableau {@code CellState[width][height]} des états avant le tick
      */
     private CellState[][] takeSnapshot() {
         int w = grid.getWidth();
@@ -327,6 +347,6 @@ public class FireSimulator {
         double windMag = Math.sqrt(wdx * wdx + wdy * wdy);
         double propMag = Math.sqrt(pdx * pdx + pdy * pdy);
         double cosTheta = dot / (windMag * propMag);
-        return 1.0 + (windStrength / 5.0) * cosTheta;
+        return 1.0 + (windStrength / MAX_WIND_FACTOR) * cosTheta;
     }
 }

@@ -36,16 +36,30 @@ import javafx.stage.Stage;
  */
 public class Main extends Application {
 
+    // -------------------------------------------------------------------------
+    // Paramètres par défaut du mode graphique
+    // -------------------------------------------------------------------------
+    private static final int    GUI_WIDTH        = 50;
+    private static final int    GUI_HEIGHT       = 30;
+    private static final int    GUI_TICK_DELAY   = 200;
+
+    // Densités de terrain utilisées pour l'initialisation aléatoire (GUI + CLI)
+    private static final double DENSITY_FORET    = 0.60;
+    private static final double DENSITY_PRAIRIE  = 0.20;
+    private static final double DENSITY_BROUSS   = 0.10;
+    private static final double DENSITY_HUMIDE   = 0.05;
+    private static final double DENSITY_URBAINE  = 0.05;
+
     @Override
     public void start(Stage primaryStage) {
-        Grid grid = new Grid(50, 30);
-        grid.initRandom(0.6, 0.2, 0.1, 0.05, 0.05);
-        grid.setFire(25, 15);
+        Grid grid = new Grid(GUI_WIDTH, GUI_HEIGHT);
+        grid.initRandom(DENSITY_FORET, DENSITY_PRAIRIE, DENSITY_BROUSS, DENSITY_HUMIDE, DENSITY_URBAINE);
+        grid.setFire(GUI_WIDTH / 2, GUI_HEIGHT / 2);
         grid.saveInitialState();
 
         Environment env               = new Environment();
         FireSimulator simulator       = new FireSimulator(grid, env);
-        SimulationController ctrl     = new SimulationController(simulator, 200);
+        SimulationController ctrl     = new SimulationController(simulator, GUI_TICK_DELAY);
 
         new MainWindow(simulator, ctrl).show(primaryStage);
     }
@@ -58,7 +72,7 @@ public class Main extends Application {
      * @throws InterruptedException si le thread principal est interrompu
      * pendant l'attente de fin de simulation
      */
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         if (args.length > 0 && args[0].equals("--headless")) {
             runCLI(args);
         } else {
@@ -76,7 +90,7 @@ public class Main extends Application {
      * @throws InterruptedException si le thread est interrompu pendant
      * l'attente
      */
-    private static void runCLI(String[] args) throws InterruptedException {
+    private static void runCLI(String[] args) {
         int width = 40;
         int height = 20;
         int maxTicks = 100;
@@ -105,7 +119,7 @@ public class Main extends Application {
         }
 
         Grid grid = new Grid(width, height);
-        grid.initRandom(0.6, 0.2, 0.1, 0.05, 0.05);
+        grid.initRandom(DENSITY_FORET, DENSITY_PRAIRIE, DENSITY_BROUSS, DENSITY_HUMIDE, DENSITY_URBAINE);
         grid.setFire(width / 2, height / 2);
 
         Environment env = new Environment(windDir, windStrength, humidity);
@@ -135,9 +149,8 @@ public class Main extends Application {
         view.printLegend();
         System.out.println("Simulation démarrée. Tapez 'help' pour la liste des commandes.");
         view.startCommandListener(env, ctrl);
-        Thread.sleep(1000);
         ctrl.start();
-        done.await();
+        try { done.await(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         ctrl.stop();
 
         System.out.println("\n=== Simulation terminée ===");
