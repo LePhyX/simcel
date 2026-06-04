@@ -34,10 +34,10 @@ import javafx.scene.text.TextAlignment;
  */
 public class WindIndicator extends VBox {
 
-    private static final double SIZE               = 160.0;
-    private static final double R                  = 52.0;
+    private static final double SIZE               = 140.0;
+    private static final double R                  = 45.0;
     private static final int    MAX_WIND_STRENGTH  = Environment.MAX_WIND;
-    private static final double LABEL_RADIUS_EXTRA = 17.0;
+    private static final double LABEL_RADIUS_EXTRA = 15.0;
     private static final double ARROWHEAD_ANGLE    = Math.PI / 5;
     private static final double ARROWHEAD_LENGTH   = 9.0;
     private static final double ARROW_MIN_LENGTH   = 8.0;
@@ -66,9 +66,9 @@ public class WindIndicator extends VBox {
      * @param env conditions météorologiques initiales, non {@code null}
      */
     public WindIndicator(Environment env) {
-        super(6);
+        super(4);
         this.env = env;
-        setPadding(new Insets(10, 10, 10, 10));
+        setPadding(new Insets(7, 10, 7, 10));
 
         Label title = new Label("Conditions météo");
         title.getStyleClass().add("label-title");
