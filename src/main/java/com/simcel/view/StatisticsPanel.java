@@ -4,51 +4,82 @@ import com.simcel.model.Grid;
 import com.simcel.model.SimulationListener;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Separator;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 
 /**
- * Barre de statistiques horizontale affichée sous la grille.
+ * Panneau de statistiques vertical affiché dans le panneau droit.
  *
  * <p>Implémente {@link SimulationListener} : les comptages sont effectués sur
- * le thread de simulation, seule la mise à jour des labels est déléguée au
- * thread JavaFX via {@link Platform#runLater}.</p>
+ * le thread de simulation, seule la mise à jour des labels et barres de
+ * progression est déléguée au thread JavaFX via {@link Platform#runLater}.</p>
  */
-public class StatisticsPanel extends HBox implements SimulationListener {
+public class StatisticsPanel extends VBox implements SimulationListener {
 
-    private static final double SEPARATOR_HEIGHT = 20.0;
+    private final Label       lblTick        = new Label("—");
+    private final Label       lblSainPct     = new Label("—");
+    private final Label       lblFeuPct      = new Label("—");
+    private final Label       lblBrulePct    = new Label("—");
+    private final Label       lblDestruction = new Label("—");
 
-    private final Label lblTick        = new Label("Tick : 0");
-    private final Label lblSain        = new Label("Sains : —");
-    private final Label lblFeu         = new Label("En feu : —");
-    private final Label lblBrule       = new Label("Brûlés : —");
-    private final Label lblDestruction = new Label("Destruction : —");
+    private final ProgressBar pbSain  = new ProgressBar(0);
+    private final ProgressBar pbFeu   = new ProgressBar(0);
+    private final ProgressBar pbBrule = new ProgressBar(0);
 
-    /** Crée la barre de statistiques. */
+    /** Crée le panneau de statistiques. */
     public StatisticsPanel() {
-        super(12);
-        setPadding(new Insets(6, 14, 6, 14));
-        setAlignment(Pos.CENTER_LEFT);
-        getStyleClass().add("stats-bar");
+        super(4);
+        setPadding(new Insets(10, 10, 10, 10));
 
-        Label title = new Label("Statistiques :");
+        Label title = new Label("Statistiques");
         title.getStyleClass().add("label-title");
+
+        for (ProgressBar pb : new ProgressBar[]{pbSain, pbFeu, pbBrule}) {
+            pb.setMaxWidth(Double.MAX_VALUE);
+        }
+        pbSain.getStyleClass().add("pb-sain");
+        pbFeu.getStyleClass().add("pb-feu");
+        pbBrule.getStyleClass().add("pb-brule");
 
         getChildren().addAll(
                 title,
-                vSep(), lblTick,
-                vSep(), lblSain,
-                vSep(), lblFeu,
-                vSep(), lblBrule,
-                vSep(), lblDestruction);
+                new Separator(),
+                buildSimpleRow("Tick",             lblTick),
+                buildProgressRow("Sains",          lblSainPct,     pbSain),
+                buildProgressRow("En feu",         lblFeuPct,      pbFeu),
+                buildProgressRow("Brûlés",         lblBrulePct,    pbBrule),
+                buildSimpleRow("Surface détruite", lblDestruction)
+        );
+    }
+
+    private HBox buildSimpleRow(String labelText, Label value) {
+        Label lbl = new Label(labelText);
+        lbl.setStyle("-fx-text-fill: #888899; -fx-font-size: 11px;");
+        value.setStyle("-fx-text-fill: #e8e8f0; -fx-font-size: 12px; -fx-font-weight: bold;");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox row = new HBox(lbl, spacer, value);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(4, 0, 4, 0));
+        return row;
+    }
+
+    private VBox buildProgressRow(String labelText, Label value, ProgressBar pb) {
+        HBox header = buildSimpleRow(labelText, value);
+        VBox row = new VBox(2, header, pb);
+        row.setPadding(new Insets(2, 0, 4, 0));
+        return row;
     }
 
     /**
-     * Calcule les comptages sur le thread de simulation, puis met à jour les
-     * labels sur le thread JavaFX.
+     * Calcule les comptages sur le thread de simulation, puis met à jour
+     * les labels et barres de progression sur le thread JavaFX.
      *
      * @param tick numéro du tick
      * @param grid grille courante
@@ -69,15 +100,22 @@ public class StatisticsPanel extends HBox implements SimulationListener {
             }
         }
 
-        final int fSain = sain, fFeu = enFeu, fBrule = brule;
-        final double taux = total > 0 ? fBrule * 100.0 / total : 0.0;
+        final int    fSain    = sain;
+        final int    fFeu     = enFeu;
+        final int    fBrule   = brule;
+        final double sainPct  = total > 0 ? fSain  * 100.0 / total : 0.0;
+        final double feuPct   = total > 0 ? fFeu   * 100.0 / total : 0.0;
+        final double brulePct = total > 0 ? fBrule * 100.0 / total : 0.0;
 
         Platform.runLater(() -> {
-            lblTick.setText("Tick : " + tick);
-            lblSain.setText("Sains : " + fSain);
-            lblFeu.setText("En feu : " + fFeu);
-            lblBrule.setText("Brûlés : " + fBrule);
-            lblDestruction.setText(String.format("Destruction : %.1f %%", taux));
+            lblTick.setText(String.valueOf(tick));
+            lblSainPct.setText(String.format("%.1f %%", sainPct));
+            lblFeuPct.setText(String.format("%.1f %%", feuPct));
+            lblBrulePct.setText(String.format("%.1f %%", brulePct));
+            lblDestruction.setText(fBrule + " cellules");
+            pbSain.setProgress(sainPct / 100.0);
+            pbFeu.setProgress(feuPct / 100.0);
+            pbBrule.setProgress(brulePct / 100.0);
         });
     }
 
@@ -86,21 +124,17 @@ public class StatisticsPanel extends HBox implements SimulationListener {
     public void onSimulationEnd() {}
 
     /**
-     * Remet les labels à leur état initial (tirets).
+     * Remet les labels et barres à leur état initial.
      * Doit être appelé depuis le thread JavaFX.
      */
     public void reset() {
-        lblTick.setText("Tick : 0");
-        lblSain.setText("Sains : —");
-        lblFeu.setText("En feu : —");
-        lblBrule.setText("Brûlés : —");
-        lblDestruction.setText("Destruction : —");
-    }
-
-    /** Crée un séparateur vertical de hauteur fixe pour la barre de stats. */
-    private static Separator vSep() {
-        Separator s = new Separator(Orientation.VERTICAL);
-        s.setMinHeight(SEPARATOR_HEIGHT);
-        return s;
+        lblTick.setText("—");
+        lblSainPct.setText("—");
+        lblFeuPct.setText("—");
+        lblBrulePct.setText("—");
+        lblDestruction.setText("—");
+        pbSain.setProgress(0);
+        pbFeu.setProgress(0);
+        pbBrule.setProgress(0);
     }
 }
