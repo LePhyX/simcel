@@ -289,6 +289,13 @@
     -fx-background-radius: 2;
 }
 
+/* ---------- Statistiques à côté du graphique ---------- */
+.stats-side {
+    -fx-background-color: #12122a;
+    -fx-border-color: #2a2a4a;
+    -fx-border-width: 0 0 0 1;
+}
+
 /* ---------- Champs de saisie de dimensions ---------- */
 .dim-field {
     -fx-background-color: #1e1e3a;

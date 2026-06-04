@@ -49,7 +49,8 @@ public class MainWindow {
 
     private static final double CELL_SIZE    = 14.0;
     private static final double RIGHT_WIDTH  = 310.0;
-    private static final double CHART_HEIGHT = 180.0;
+    private static final double CHART_HEIGHT = 200.0;
+    private static final double STATS_WIDTH  = 210.0;
     private static final double STAGE_WIDTH  = 1050.0;
     private static final double STAGE_HEIGHT = 780.0;
 
@@ -198,7 +199,7 @@ public class MainWindow {
     // Construction du layout
     // -------------------------------------------------------------------------
 
-    /** VBox centrale : zone de grille + barre de lecture + graphique. */
+    /** VBox centrale : zone de grille + barre de lecture + graphique avec statistiques. */
     private VBox buildCenterPanel() {
         Pane gridHolder = buildGridHolder();
 
@@ -207,11 +208,22 @@ public class MainWindow {
         chartWrapper.setMinHeight(CHART_HEIGHT);
         chartWrapper.setMaxHeight(CHART_HEIGHT);
         chartWrapper.getStyleClass().add("chart-wrapper");
+        HBox.setHgrow(chartWrapper, Priority.ALWAYS);
         chartWrapper.widthProperty().addListener((obs, o, n) -> {
             if (n.doubleValue() > 10) chartView.resize(n.doubleValue(), CHART_HEIGHT);
         });
 
-        return new VBox(gridHolder, buildPlaybackBar(), chartWrapper);
+        statisticsPanel.setPrefWidth(STATS_WIDTH);
+        statisticsPanel.setMinWidth(STATS_WIDTH);
+        statisticsPanel.setMaxWidth(STATS_WIDTH);
+        statisticsPanel.getStyleClass().add("stats-side");
+
+        HBox bottomSection = new HBox(chartWrapper, statisticsPanel);
+        bottomSection.setMinHeight(CHART_HEIGHT);
+        bottomSection.setPrefHeight(CHART_HEIGHT);
+        bottomSection.setMaxHeight(CHART_HEIGHT);
+
+        return new VBox(gridHolder, buildPlaybackBar(), bottomSection);
     }
 
     /** Enveloppe la grille dans un Pane qui occupe tout l'espace vertical disponible. */
@@ -253,12 +265,10 @@ public class MainWindow {
 
     /** Panneau droit scrollable : météo · édition · statistiques · taille grille. */
     private ScrollPane buildScrollableRightPanel() {
-        VBox panel = new VBox(6,
+        VBox panel = new VBox(4,
                 windIndicator,
                 new Separator(),
                 buildEditSection(),
-                new Separator(),
-                statisticsPanel,
                 new Separator(),
                 buildGridSection());
         panel.getStyleClass().add("right-panel");
@@ -509,9 +519,9 @@ public class MainWindow {
         btnNew.setOnAction(e ->
                 reinitialize((int) sliderWidth.getValue(), (int) sliderHeight.getValue()));
 
-        VBox section = new VBox(6, titleGrid,
+        VBox section = new VBox(4, titleGrid,
                 widthRow, sliderWidth, heightRow, sliderHeight, btnNew);
-        section.setPadding(new Insets(10, 10, 10, 10));
+        section.setPadding(new Insets(6, 10, 8, 10));
         return section;
     }
 
@@ -574,8 +584,8 @@ public class MainWindow {
         Label titleEdit = new Label("Edition du terrain");
         titleEdit.getStyleClass().add("label-title");
 
-        VBox section = new VBox(6, titleEdit, btnEditToggle, editToolsBox);
-        section.setPadding(new Insets(0, 10, 0, 10));
+        VBox section = new VBox(4, titleEdit, btnEditToggle, editToolsBox);
+        section.setPadding(new Insets(4, 10, 4, 10));
         return section;
     }
 
