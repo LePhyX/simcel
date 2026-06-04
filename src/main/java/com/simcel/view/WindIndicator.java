@@ -42,11 +42,11 @@ public class WindIndicator extends VBox {
     private static final double ARROWHEAD_LENGTH   = 9.0;
     private static final double ARROW_MIN_LENGTH   = 8.0;
 
-    private static final Color COLOR_BG       = Color.web("#1a1a2e");
-    private static final Color COLOR_CIRCLE   = Color.web("#444466");
-    private static final Color COLOR_TICK     = Color.web("#555577");
-    private static final Color COLOR_ACTIVE   = Color.web("#ff6633");
-    private static final Color COLOR_INACTIVE = Color.web("#888899");
+    private static final Color COLOR_BG       = Color.web("#141414");
+    private static final Color COLOR_CIRCLE   = Color.web("#3a3a3a");
+    private static final Color COLOR_TICK     = Color.web("#555555");
+    private static final Color COLOR_ACTIVE   = Color.web("#f0a030");
+    private static final Color COLOR_INACTIVE = Color.web("#666666");
     private static final Color COLOR_CENTER   = Color.web("#ffffff");
 
     private static final String[] WIND_LABELS =
