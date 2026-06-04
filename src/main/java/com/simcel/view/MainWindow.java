@@ -19,6 +19,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
 import javafx.scene.control.ToggleButton;
@@ -455,23 +456,53 @@ public class MainWindow {
         Label titleGrid = new Label("Taille de la grille");
         titleGrid.getStyleClass().add("label-title");
 
-        Label lblWidth = new Label("Largeur : " + grid.getWidth());
+        // --- Largeur ---
+        Label lblWidth = new Label("Largeur :");
+        TextField tfWidth = new TextField(String.valueOf(grid.getWidth()));
+        tfWidth.setPrefWidth(58);
+        tfWidth.setMaxWidth(58);
+        tfWidth.getStyleClass().add("dim-field");
+
         Slider sliderWidth = new Slider(10, 300, grid.getWidth());
         sliderWidth.setShowTickLabels(true);
         sliderWidth.setShowTickMarks(true);
         sliderWidth.setMajorTickUnit(100);
         sliderWidth.setMinorTickCount(9);
-        sliderWidth.valueProperty().addListener((obs, old, val) ->
-                lblWidth.setText("Largeur : " + val.intValue()));
 
-        Label lblHeight = new Label("Hauteur : " + grid.getHeight());
+        sliderWidth.valueProperty().addListener((obs, old, val) ->
+                tfWidth.setText(String.valueOf(val.intValue())));
+        tfWidth.setOnAction(e ->
+                applyDimField(tfWidth, sliderWidth, 10, 300));
+        tfWidth.focusedProperty().addListener((obs, was, now) -> {
+            if (!now) applyDimField(tfWidth, sliderWidth, 10, 300);
+        });
+
+        HBox widthRow = new HBox(8, lblWidth, tfWidth);
+        widthRow.setAlignment(Pos.CENTER_LEFT);
+
+        // --- Hauteur ---
+        Label lblHeight = new Label("Hauteur :");
+        TextField tfHeight = new TextField(String.valueOf(grid.getHeight()));
+        tfHeight.setPrefWidth(58);
+        tfHeight.setMaxWidth(58);
+        tfHeight.getStyleClass().add("dim-field");
+
         Slider sliderHeight = new Slider(10, 200, grid.getHeight());
         sliderHeight.setShowTickLabels(true);
         sliderHeight.setShowTickMarks(true);
         sliderHeight.setMajorTickUnit(50);
         sliderHeight.setMinorTickCount(9);
+
         sliderHeight.valueProperty().addListener((obs, old, val) ->
-                lblHeight.setText("Hauteur : " + val.intValue()));
+                tfHeight.setText(String.valueOf(val.intValue())));
+        tfHeight.setOnAction(e ->
+                applyDimField(tfHeight, sliderHeight, 10, 200));
+        tfHeight.focusedProperty().addListener((obs, was, now) -> {
+            if (!now) applyDimField(tfHeight, sliderHeight, 10, 200);
+        });
+
+        HBox heightRow = new HBox(8, lblHeight, tfHeight);
+        heightRow.setAlignment(Pos.CENTER_LEFT);
 
         Button btnNew = new Button("↺  Nouvelle grille");
         btnNew.setMaxWidth(Double.MAX_VALUE);
@@ -479,9 +510,25 @@ public class MainWindow {
                 reinitialize((int) sliderWidth.getValue(), (int) sliderHeight.getValue()));
 
         VBox section = new VBox(6, titleGrid,
-                lblWidth, sliderWidth, lblHeight, sliderHeight, btnNew);
+                widthRow, sliderWidth, heightRow, sliderHeight, btnNew);
         section.setPadding(new Insets(10, 10, 10, 10));
         return section;
+    }
+
+    /**
+     * Applique la valeur saisie dans un TextField à son Slider associé.
+     * Si la valeur est hors plage elle est clampée ; si elle est invalide
+     * le TextField est remis à la valeur courante du Slider.
+     */
+    private static void applyDimField(TextField tf, Slider slider, int min, int max) {
+        try {
+            int val = Integer.parseInt(tf.getText().trim());
+            val = Math.max(min, Math.min(max, val));
+            slider.setValue(val);
+            tf.setText(String.valueOf(val));
+        } catch (NumberFormatException ex) {
+            tf.setText(String.valueOf((int) slider.getValue()));
+        }
     }
 
     // -------------------------------------------------------------------------

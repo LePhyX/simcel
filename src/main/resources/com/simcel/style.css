@@ -288,3 +288,19 @@
     -fx-background-color: #2d2d55;
     -fx-background-radius: 2;
 }
+
+/* ---------- Champs de saisie de dimensions ---------- */
+.dim-field {
+    -fx-background-color: #1e1e3a;
+    -fx-text-fill: #e8e8f0;
+    -fx-border-color: #444466;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-border-width: 1;
+    -fx-font-size: 12px;
+    -fx-padding: 3 6 3 6;
+}
+
+.dim-field:focused {
+    -fx-border-color: #5555cc;
+}
