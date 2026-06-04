@@ -135,3 +135,156 @@
     -fx-font-size: 10px;
     -fx-text-fill: #7777aa;
 }
+
+/* ---------- Barre d'en-tête applicative ---------- */
+.header-bar {
+    -fx-background-color: #0e0e22;
+    -fx-border-color: #2a2a4a;
+    -fx-border-width: 0 0 1 0;
+}
+
+.header-title {
+    -fx-text-fill: #e8e8f0;
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+}
+
+.header-subtitle {
+    -fx-text-fill: #888899;
+    -fx-font-size: 11px;
+}
+
+.header-info {
+    -fx-text-fill: #aaaacc;
+    -fx-font-size: 11px;
+    -fx-background-color: #1e1e3a;
+    -fx-background-radius: 4;
+    -fx-padding: 3 8 3 8;
+}
+
+.header-status-paused {
+    -fx-text-fill: #ffaa44;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-background-color: #2a1a0a;
+    -fx-background-radius: 4;
+    -fx-padding: 3 8 3 8;
+}
+
+.header-status-running {
+    -fx-text-fill: #44dd88;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-background-color: #0a2a1a;
+    -fx-background-radius: 4;
+    -fx-padding: 3 8 3 8;
+}
+
+.header-btn {
+    -fx-padding: 5 12 5 12;
+    -fx-font-size: 11px;
+}
+
+/* ---------- Barre de lecture ---------- */
+.playback-bar {
+    -fx-background-color: #12122a;
+    -fx-border-color: #2a2a4a;
+    -fx-border-width: 1 0 0 0;
+}
+
+.playback-btn {
+    -fx-background-color: #2d2d55;
+    -fx-text-fill: #dcdcf0;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-cursor: hand;
+    -fx-padding: 6 14 6 14;
+    -fx-font-size: 14px;
+    -fx-min-width: 36px;
+}
+
+.playback-btn:hover {
+    -fx-background-color: #3d3d75;
+}
+
+.playback-btn:pressed {
+    -fx-background-color: #1a1a3a;
+    -fx-text-fill: #ffffff;
+}
+
+.playback-btn:disabled {
+    -fx-opacity: 0.35;
+    -fx-cursor: default;
+}
+
+/* ---------- Conteneur du graphique ---------- */
+.chart-wrapper {
+    -fx-background-color: #1a1a2e;
+    -fx-border-color: #2a2a4a;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ---------- ScrollPane panneau droit ---------- */
+.right-scroll {
+    -fx-background-color: #12122a;
+    -fx-border-color: #2a2a4a;
+    -fx-border-width: 0 0 0 1;
+}
+
+.right-scroll > .viewport {
+    -fx-background-color: #12122a;
+}
+
+.right-scroll > .scroll-bar:vertical {
+    -fx-background-color: #12122a;
+}
+
+/* ---------- Boutons de force du vent ---------- */
+.force-btn {
+    -fx-background-color: #2d2d55;
+    -fx-text-fill: #aaaaee;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-padding: 4 8 4 8;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+    -fx-min-width: 30px;
+}
+
+.force-btn:hover {
+    -fx-background-color: #3d3d75;
+}
+
+.force-btn:selected {
+    -fx-background-color: #5555cc;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #7777ee;
+    -fx-border-width: 1;
+}
+
+/* ---------- Barres de progression statistiques ---------- */
+.pb-sain > .bar {
+    -fx-background-color: #228B22;
+    -fx-background-radius: 2;
+}
+
+.pb-feu > .bar {
+    -fx-background-color: #FF4500;
+    -fx-background-radius: 2;
+}
+
+.pb-brule > .bar {
+    -fx-background-color: #888888;
+    -fx-background-radius: 2;
+}
+
+.progress-bar {
+    -fx-background-color: #2d2d55;
+    -fx-background-radius: 2;
+    -fx-pref-height: 6px;
+}
+
+.progress-bar > .track {
+    -fx-background-color: #2d2d55;
+    -fx-background-radius: 2;
+}
