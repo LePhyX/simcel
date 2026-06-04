@@ -25,12 +25,12 @@ public class ChartView extends Canvas implements SimulationListener {
     private static final int    MAX_POINTS = 300;
     private static final double PADDING    = 35.0;
 
-    private static final Color BG_COLOR      = Color.web("#1a1a2e");
+    private static final Color BG_COLOR      = Color.web("#141414");
     private static final Color COLOR_SAIN    = Color.web("#228B22");
     private static final Color COLOR_FEU     = Color.web("#FF4500");
     private static final Color COLOR_BRULE   = Color.web("#888888");
-    private static final Color COLOR_AXIS    = Color.web("#555555");
-    private static final Color COLOR_LABEL   = Color.web("#888888");
+    private static final Color COLOR_AXIS    = Color.web("#333333");
+    private static final Color COLOR_LABEL   = Color.web("#666666");
 
     /** Pourcentages relatifs aux cellules totales (sain+feu+brulé). */
     private final List<Double> dataSainPct  = new ArrayList<>();
