@@ -1,10 +1,10 @@
 /* ============================================================
-   SimCel — Thème sombre
+   SimCel — Thème sombre neutre + accent orange/ambre
    ============================================================ */
 
 /* ---------- Base ---------- */
 .root {
-    -fx-background-color: #1a1a2e;
+    -fx-background-color: #141414;
     -fx-font-family: "Segoe UI", "Ubuntu", "DejaVu Sans", sans-serif;
     -fx-font-size: 13px;
 }
@@ -15,15 +15,15 @@
 }
 
 .label-title {
-    -fx-text-fill: #e8e8f0;
+    -fx-text-fill: #e8e8e8;
     -fx-font-weight: bold;
     -fx-font-size: 13px;
 }
 
 /* ---------- Boutons ---------- */
 .button {
-    -fx-background-color: #2d2d55;
-    -fx-text-fill: #dcdcf0;
+    -fx-background-color: #252525;
+    -fx-text-fill: #e0e0e0;
     -fx-background-radius: 5;
     -fx-border-radius: 5;
     -fx-cursor: hand;
@@ -32,11 +32,11 @@
 }
 
 .button:hover {
-    -fx-background-color: #3d3d75;
+    -fx-background-color: #2e2e2e;
 }
 
 .button:pressed {
-    -fx-background-color: #1a1a3a;
+    -fx-background-color: #1a1a1a;
     -fx-text-fill: #ffffff;
 }
 
@@ -47,72 +47,106 @@
 
 /* ---------- Séparateurs ---------- */
 .separator > .line {
-    -fx-border-color: #2a2a4a;
+    -fx-border-color: #2a2a2a;
     -fx-border-width: 1px;
 }
 
 /* ---------- Slider ---------- */
 .slider .track {
-    -fx-background-color: #2d2d55;
+    -fx-background-color: #2a2a2a;
     -fx-background-radius: 2;
 }
 
 .slider .thumb {
-    -fx-background-color: #5555cc;
+    -fx-background-color: #f0a030;
     -fx-background-radius: 5;
     -fx-effect: none;
 }
 
 .slider .thumb:hover {
-    -fx-background-color: #7777ee;
+    -fx-background-color: #ffbb44;
 }
 
 .slider .axis {
-    -fx-tick-label-fill: #777788;
+    -fx-tick-label-fill: #666666;
     -fx-font-size: 10px;
+}
+
+/* ---------- ComboBox ---------- */
+.combo-box {
+    -fx-background-color: #252525;
+    -fx-border-color: #3a3a3a;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-border-width: 1;
+}
+
+.combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e0e0e0;
+}
+
+.combo-box:focused {
+    -fx-border-color: #f0a030;
+}
+
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.combo-box .arrow-button .arrow {
+    -fx-background-color: #aaaaaa;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #252525;
+    -fx-border-color: #3a3a3a;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 10, 0, 0, 4);
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-background-color: #252525;
+    -fx-text-fill: #e0e0e0;
+    -fx-padding: 5 10 5 10;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #2e2e2e;
+}
+
+.combo-box-popup .list-view .list-cell:selected,
+.combo-box-popup .list-view .list-cell:selected:hover {
+    -fx-background-color: #f0a030;
+    -fx-text-fill: #141414;
 }
 
 /* ---------- Panneau droit ---------- */
 .right-panel {
-    -fx-background-color: #12122a;
+    -fx-background-color: #1c1c1c;
 }
 
 /* ---------- Zone grille ---------- */
 .grid-pane {
-    -fx-background-color: #0f0f1e;
-}
-
-/* ---------- Barre graphique + météo ---------- */
-.bottom-info-bar {
-    -fx-background-color: #12122a;
-    -fx-border-color: #2a2a4a;
-    -fx-border-width: 1 0 0 0;
-    -fx-padding: 6 14 6 14;
-    -fx-alignment: center-left;
-}
-
-/* ---------- Barre de statistiques ---------- */
-.stats-bar {
-    -fx-background-color: #12122a;
-    -fx-border-color: #2a2a4a;
-    -fx-border-width: 1 0 0 0;
+    -fx-background-color: #0a0a0a;
 }
 
 /* ---------- Barre de légende ---------- */
 .legend-bar {
-    -fx-background-color: #12122a;
-    -fx-border-color: #2a2a4a;
+    -fx-background-color: #1c1c1c;
+    -fx-border-color: #2a2a2a;
     -fx-border-width: 0 0 1 0;
 }
 
 /* ---------- Mode édition ---------- */
 .edit-toggle {
-    -fx-background-color: #2d2d55;
-    -fx-text-fill: #aaaaee;
+    -fx-background-color: #252525;
+    -fx-text-fill: #aaaaaa;
 }
 
 .edit-toggle:selected {
-    -fx-background-color: #3a5a3a;
+    -fx-background-color: #1e3a1e;
     -fx-text-fill: #90ee90;
     -fx-border-color: #90ee90;
     -fx-border-width: 1;
@@ -133,5 +167,187 @@
 
 .label-hint {
     -fx-font-size: 10px;
-    -fx-text-fill: #7777aa;
+    -fx-text-fill: #666666;
+}
+
+/* ---------- Barre d'en-tête applicative ---------- */
+.header-bar {
+    -fx-background-color: #0f0f0f;
+    -fx-border-color: #2a2a2a;
+    -fx-border-width: 0 0 1 0;
+}
+
+.header-title {
+    -fx-text-fill: #e8e8e8;
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+}
+
+.header-subtitle {
+    -fx-text-fill: #666666;
+    -fx-font-size: 11px;
+}
+
+.header-info {
+    -fx-text-fill: #aaaaaa;
+    -fx-font-size: 11px;
+    -fx-background-color: #222222;
+    -fx-background-radius: 4;
+    -fx-padding: 3 8 3 8;
+}
+
+.header-status-paused {
+    -fx-text-fill: #f0a030;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-background-color: #2a1e00;
+    -fx-background-radius: 4;
+    -fx-padding: 3 8 3 8;
+}
+
+.header-status-running {
+    -fx-text-fill: #44dd88;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-background-color: #0a2a1a;
+    -fx-background-radius: 4;
+    -fx-padding: 3 8 3 8;
+}
+
+.header-btn {
+    -fx-padding: 5 12 5 12;
+    -fx-font-size: 11px;
+}
+
+/* ---------- Barre de lecture ---------- */
+.playback-bar {
+    -fx-background-color: #1c1c1c;
+    -fx-border-color: #2a2a2a;
+    -fx-border-width: 1 0 0 0;
+}
+
+.playback-btn {
+    -fx-background-color: #252525;
+    -fx-text-fill: #e0e0e0;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
+    -fx-padding: 6 14 6 14;
+    -fx-font-size: 14px;
+    -fx-min-width: 36px;
+}
+
+.playback-btn:hover {
+    -fx-background-color: #333333;
+}
+
+.playback-btn:pressed {
+    -fx-background-color: #f0a030;
+    -fx-text-fill: #141414;
+}
+
+.playback-btn:disabled {
+    -fx-opacity: 0.35;
+    -fx-cursor: default;
+}
+
+/* ---------- Conteneur du graphique ---------- */
+.chart-wrapper {
+    -fx-background-color: #141414;
+    -fx-border-color: #2a2a2a;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ---------- ScrollPane panneau droit ---------- */
+.right-scroll {
+    -fx-background-color: #1c1c1c;
+    -fx-border-color: #2a2a2a;
+    -fx-border-width: 0 0 0 1;
+}
+
+.right-scroll > .viewport {
+    -fx-background-color: #1c1c1c;
+}
+
+.right-scroll > .scroll-bar:vertical {
+    -fx-background-color: #1c1c1c;
+}
+
+.right-scroll > .scroll-bar:vertical .thumb {
+    -fx-background-color: #3a3a3a;
+    -fx-background-radius: 3;
+}
+
+/* ---------- Boutons de force du vent ---------- */
+.force-btn {
+    -fx-background-color: #252525;
+    -fx-text-fill: #aaaaaa;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-padding: 4 8 4 8;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+    -fx-min-width: 30px;
+}
+
+.force-btn:hover {
+    -fx-background-color: #2e2e2e;
+}
+
+.force-btn:selected {
+    -fx-background-color: #f0a030;
+    -fx-text-fill: #141414;
+    -fx-font-weight: bold;
+    -fx-border-color: #f0a030;
+    -fx-border-width: 1;
+}
+
+/* ---------- Barres de progression statistiques ---------- */
+.pb-sain > .bar {
+    -fx-background-color: #228B22;
+    -fx-background-radius: 2;
+}
+
+.pb-feu > .bar {
+    -fx-background-color: #FF4500;
+    -fx-background-radius: 2;
+}
+
+.pb-brule > .bar {
+    -fx-background-color: #888888;
+    -fx-background-radius: 2;
+}
+
+.progress-bar {
+    -fx-background-color: #252525;
+    -fx-background-radius: 2;
+    -fx-pref-height: 5px;
+}
+
+.progress-bar > .track {
+    -fx-background-color: #252525;
+    -fx-background-radius: 2;
+}
+
+/* ---------- Statistiques à côté du graphique ---------- */
+.stats-side {
+    -fx-background-color: #1c1c1c;
+    -fx-border-color: #2a2a2a;
+    -fx-border-width: 0 0 0 1;
+}
+
+/* ---------- Champs de saisie de dimensions ---------- */
+.dim-field {
+    -fx-background-color: #1e1e1e;
+    -fx-text-fill: #e8e8e8;
+    -fx-border-color: #3a3a3a;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-border-width: 1;
+    -fx-font-size: 12px;
+    -fx-padding: 3 6 3 6;
+}
+
+.dim-field:focused {
+    -fx-border-color: #f0a030;
 }

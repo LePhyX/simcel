@@ -12,33 +12,33 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Graphique d'évolution temporelle des populations de cellules.
+ * Graphique d'évolution temporelle en aires empilées (stacked area).
  *
- * <p>Implémente {@link SimulationListener} et se redessine après chaque tick.
- * Le graphique affiche trois courbes : cellules saines, en feu et brûlées,
- * tracées sur un {@link Canvas} sans dépendance à {@code javafx.charts}.</p>
+ * <p>Affiche trois zones superposées en pourcentage du total de cellules :
+ * Brûlées (bas), En feu (milieu), Saines (haut). L'axe Y va de 0 à 100 %.</p>
  *
- * <p>Les données sont collectées sur le thread de simulation ; seul le
- * redessinage est délégué au thread JavaFX via {@link Platform#runLater}.</p>
+ * <p>Appeler {@link #resize(double, double)} lorsque le conteneur change
+ * de taille pour adapter le canvas dynamiquement.</p>
  */
 public class ChartView extends Canvas implements SimulationListener {
 
-    private static final int    MAX_POINTS       = 300;
-    private static final double PADDING          = 30.0;
-    private static final int    MIN_OBSERVED_MAX = 1;
-    private static final Color  BG_COLOR         = Color.web("#1a1a2e");
-    private static final Color  COLOR_SAIN       = Color.web("#228B22");
-    private static final Color  COLOR_FEU        = Color.web("#FF4500");
-    private static final Color  COLOR_BRULE      = Color.web("#888888");
+    private static final int    MAX_POINTS = 300;
+    private static final double PADDING    = 35.0;
 
-    private final List<Integer> dataSain  = new ArrayList<>();
-    private final List<Integer> dataFeu   = new ArrayList<>();
-    private final List<Integer> dataBrule = new ArrayList<>();
+    private static final Color BG_COLOR      = Color.web("#141414");
+    private static final Color COLOR_SAIN    = Color.web("#228B22");
+    private static final Color COLOR_FEU     = Color.web("#FF4500");
+    private static final Color COLOR_BRULE   = Color.web("#888888");
+    private static final Color COLOR_AXIS    = Color.web("#333333");
+    private static final Color COLOR_LABEL   = Color.web("#666666");
 
-    private int observedMax = MIN_OBSERVED_MAX;
+    /** Pourcentages relatifs aux cellules totales (sain+feu+brulé). */
+    private final List<Double> dataSainPct  = new ArrayList<>();
+    private final List<Double> dataFeuPct   = new ArrayList<>();
+    private final List<Double> dataBrulePct = new ArrayList<>();
 
     /**
-     * Crée le graphique avec les dimensions données.
+     * Crée le graphique avec les dimensions initiales données.
      *
      * @param width  largeur en pixels
      * @param height hauteur en pixels
@@ -49,16 +49,26 @@ public class ChartView extends Canvas implements SimulationListener {
     }
 
     /**
-     * Collecte les comptages sur le thread de simulation, puis délègue le
-     * redessinage au thread JavaFX.
+     * Redimensionne le canvas et redessine le graphique.
+     * Doit être appelé depuis le thread JavaFX.
      *
-     * @param tick numéro du tick
-     * @param grid grille courante
+     * @param w nouvelle largeur en pixels
+     * @param h nouvelle hauteur en pixels
+     */
+    public void resize(double w, double h) {
+        setWidth(w);
+        setHeight(h);
+        if (dataSainPct.isEmpty()) drawEmpty();
+        else redraw();
+    }
+
+    /**
+     * Collecte les données sur le thread de simulation, puis redessine
+     * sur le thread JavaFX.
      */
     @Override
     public void onTick(int tick, Grid grid) {
         int sain = 0, enFeu = 0, brule = 0;
-
         for (int y = 0; y < grid.getHeight(); y++) {
             for (int x = 0; x < grid.getWidth(); x++) {
                 switch (grid.getCell(x, y).getState()) {
@@ -69,18 +79,17 @@ public class ChartView extends Canvas implements SimulationListener {
                 }
             }
         }
+        int total = grid.getWidth() * grid.getHeight();
+        final double sp = total > 0 ? sain  * 100.0 / total : 0;
+        final double fp = total > 0 ? enFeu * 100.0 / total : 0;
+        final double bp = total > 0 ? brule * 100.0 / total : 0;
 
-        final int fSain = sain, fFeu = enFeu, fBrule = brule;
         Platform.runLater(() -> {
-            addPoint(fSain, fFeu, fBrule);
+            addPoint(sp, fp, bp);
             redraw();
         });
     }
 
-    /**
-     * Aucune action requise à la fin de simulation : le graphique conserve
-     * les courbes du dernier tick.
-     */
     @Override
     public void onSimulationEnd() {}
 
@@ -89,10 +98,9 @@ public class ChartView extends Canvas implements SimulationListener {
      * Doit être appelé depuis le thread JavaFX.
      */
     public void clear() {
-        dataSain.clear();
-        dataFeu.clear();
-        dataBrule.clear();
-        observedMax = MIN_OBSERVED_MAX;
+        dataSainPct.clear();
+        dataFeuPct.clear();
+        dataBrulePct.clear();
         drawEmpty();
     }
 
@@ -101,48 +109,29 @@ public class ChartView extends Canvas implements SimulationListener {
      * Doit être appelé depuis le thread JavaFX.
      */
     public void removeLastPoint() {
-        if (dataSain.isEmpty()) return;
-        dataSain.remove(dataSain.size() - 1);
-        dataFeu.remove(dataFeu.size() - 1);
-        dataBrule.remove(dataBrule.size() - 1);
-        recomputeObservedMax();
-        redraw();
+        if (dataSainPct.isEmpty()) return;
+        dataSainPct.remove(dataSainPct.size() - 1);
+        dataFeuPct.remove(dataFeuPct.size() - 1);
+        dataBrulePct.remove(dataBrulePct.size() - 1);
+        if (dataSainPct.isEmpty()) drawEmpty();
+        else redraw();
     }
 
     // -------------------------------------------------------------------------
     // Rendu interne
     // -------------------------------------------------------------------------
 
-    /**
-     * Ajoute un point aux trois séries. Si la fenêtre glissante est atteinte
-     * ({@link #MAX_POINTS}), le point le plus ancien est supprimé.
-     */
-    private void addPoint(int sain, int feu, int brule) {
-        dataSain.add(sain);
-        dataFeu.add(feu);
-        dataBrule.add(brule);
-        observedMax = Math.max(observedMax, Math.max(sain, Math.max(feu, brule)));
-        if (dataSain.size() > MAX_POINTS) {
-            dataSain.remove(0);
-            dataFeu.remove(0);
-            dataBrule.remove(0);
-            recomputeObservedMax();
+    private void addPoint(double sain, double feu, double brule) {
+        dataSainPct.add(sain);
+        dataFeuPct.add(feu);
+        dataBrulePct.add(brule);
+        if (dataSainPct.size() > MAX_POINTS) {
+            dataSainPct.remove(0);
+            dataFeuPct.remove(0);
+            dataBrulePct.remove(0);
         }
     }
 
-    /**
-     * Recalcule {@link #observedMax} en parcourant toutes les séries.
-     * Appelé après la suppression d'un point pour que l'axe Y reste correct.
-     */
-    private void recomputeObservedMax() {
-        int max = MIN_OBSERVED_MAX;
-        for (int i = 0; i < dataSain.size(); i++) {
-            max = Math.max(max, Math.max(dataSain.get(i), Math.max(dataFeu.get(i), dataBrule.get(i))));
-        }
-        observedMax = max;
-    }
-
-    /** Dessine le fond et les axes sans aucune donnée (état initial ou après {@link #clear()}). */
     private void drawEmpty() {
         GraphicsContext gc = getGraphicsContext2D();
         gc.setFill(BG_COLOR);
@@ -151,91 +140,123 @@ public class ChartView extends Canvas implements SimulationListener {
         drawLegend(gc);
     }
 
-    /** Efface le canvas et redessine axes, courbes et légende à partir des données courantes. */
     private void redraw() {
         GraphicsContext gc = getGraphicsContext2D();
-        double w = getWidth();
-        double h = getHeight();
-
+        double w = getWidth(), h = getHeight();
         gc.setFill(BG_COLOR);
         gc.fillRect(0, 0, w, h);
 
+        int n = dataSainPct.size();
+        if (n >= 2) {
+            double plotW = w - 2 * PADDING;
+            double plotH = h - 2 * PADDING;
+            drawStackedAreas(gc, n, plotW, plotH);
+        }
+
         drawAxes(gc);
-
-        int n = dataSain.size();
-        if (n < 2) return;
-
-        double plotW = w - 2 * PADDING;
-        double plotH = h - 2 * PADDING;
-
-        drawSeries(gc, dataSain,  n, plotW, plotH, COLOR_SAIN);
-        drawSeries(gc, dataFeu,   n, plotW, plotH, COLOR_FEU);
-        drawSeries(gc, dataBrule, n, plotW, plotH, COLOR_BRULE);
-
         drawLegend(gc);
     }
 
     /**
-     * Trace une série de données comme une polyligne colorée.
-     *
-     * @param gc    contexte graphique
-     * @param data  valeurs à tracer
-     * @param n     nombre de points
-     * @param plotW largeur de la zone de tracé (hors padding)
-     * @param plotH hauteur de la zone de tracé (hors padding)
-     * @param color couleur de la courbe
+     * Dessine les trois aires empilées : Brûlés (bas), En feu (milieu),
+     * Sains (haut). Chaque aire est un polygone fermé entre son sommet et
+     * le sommet de la couche précédente.
      */
-    private void drawSeries(GraphicsContext gc, List<Integer> data,
-                            int n, double plotW, double plotH, Color color) {
-        gc.setStroke(color);
-        gc.setLineWidth(1.5);
-        gc.beginPath();
+    private void drawStackedAreas(GraphicsContext gc, int n, double plotW, double plotH) {
+        double bottom = PADDING + plotH;
+
+        // Précalcul des coordonnées Y pour chaque couche (sommet de chaque aire)
+        double[] bruleTopY = new double[n];
+        double[] feuTopY   = new double[n];
+        double[] sainTopY  = new double[n];
+        double[] xs        = new double[n];
+
         for (int i = 0; i < n; i++) {
-            double x = PADDING + i * plotW / (n - 1);
-            double y = PADDING + plotH - (data.get(i) * plotH / observedMax);
-            if (i == 0) gc.moveTo(x, y);
-            else        gc.lineTo(x, y);
+            xs[i]        = PADDING + i * plotW / (n - 1);
+            bruleTopY[i] = bottom - clamp(dataBrulePct.get(i)) * plotH / 100.0;
+            feuTopY[i]   = bruleTopY[i] - clamp(dataFeuPct.get(i)) * plotH / 100.0;
+            sainTopY[i]  = feuTopY[i]   - clamp(dataSainPct.get(i)) * plotH / 100.0;
         }
-        gc.stroke();
+
+        // Aire Brûlés : du sommet brule vers le bas du graphique
+        fillArea(gc, xs, bruleTopY, null, bottom, n, COLOR_BRULE.deriveColor(0, 1, 1, 0.85));
+
+        // Aire En feu : du sommet feu vers le sommet brule
+        fillArea(gc, xs, feuTopY, bruleTopY, bottom, n, COLOR_FEU.deriveColor(0, 1, 1, 0.85));
+
+        // Aire Sains : du sommet sain vers le sommet feu
+        fillArea(gc, xs, sainTopY, feuTopY, bottom, n, COLOR_SAIN.deriveColor(0, 1, 1, 0.85));
     }
 
-    /** Dessine l'axe vertical et l'axe horizontal ainsi que le titre du graphique. */
+    /**
+     * Remplit un polygone en aire entre {@code topY} (sommet courant, gauche→droite)
+     * et {@code bottomY} (bas de la couche, droite→gauche).
+     * Si {@code bottomY} est {@code null}, utilise la constante {@code flatBottom}.
+     */
+    private static void fillArea(GraphicsContext gc, double[] xs, double[] topY,
+                                  double[] bottomY, double flatBottom, int n, Color color) {
+        double[] polyX = new double[2 * n];
+        double[] polyY = new double[2 * n];
+
+        for (int i = 0; i < n; i++) {
+            polyX[i] = xs[i];
+            polyY[i] = topY[i];
+        }
+        for (int i = 0; i < n; i++) {
+            polyX[n + i] = xs[n - 1 - i];
+            polyY[n + i] = bottomY == null ? flatBottom : bottomY[n - 1 - i];
+        }
+
+        gc.setFill(color);
+        gc.fillPolygon(polyX, polyY, 2 * n);
+    }
+
+    private static double clamp(double v) {
+        return Math.max(0, Math.min(100, v));
+    }
+
     private void drawAxes(GraphicsContext gc) {
-        double w = getWidth();
-        double h = getHeight();
-        gc.setStroke(Color.web("#555555"));
+        double w = getWidth(), h = getHeight();
+        gc.setStroke(COLOR_AXIS);
         gc.setLineWidth(1.0);
         gc.strokeLine(PADDING, PADDING, PADDING, h - PADDING);
         gc.strokeLine(PADDING, h - PADDING, w - PADDING, h - PADDING);
 
-        gc.setFill(Color.web("#888888"));
+        gc.setFill(COLOR_LABEL);
         gc.setFont(Font.font(10));
-        gc.fillText("Évolution temporelle", PADDING, PADDING - 8);
+
+        // Labels axe Y : 0%, 50%, 100%
+        gc.fillText("100%", 2, PADDING + 4);
+        gc.fillText(" 50%", 2, PADDING + (h - 2 * PADDING) / 2 + 4);
+        gc.fillText("  0%", 2, h - PADDING + 4);
+
+        // Labels axe X
+        int n = dataSainPct.size();
+        gc.fillText("t=0", PADDING, h - PADDING + 14);
+        if (n > 1) {
+            String tMax = "t=" + (n - 1);
+            gc.fillText(tMax, w - PADDING - tMax.length() * 5.5, h - PADDING + 14);
+        }
+
+        // Titre
+        gc.setFill(COLOR_LABEL);
+        gc.setFont(Font.font(11));
+        gc.fillText("Évolution temporelle", PADDING, PADDING - 10);
     }
 
-    /** Dessine la légende des trois séries en haut à droite du graphique. */
     private void drawLegend(GraphicsContext gc) {
-        double x = getWidth() - PADDING - 80;
+        double x = getWidth() - PADDING - 85;
         double y = PADDING + 10;
 
         drawLegendEntry(gc, x, y,      COLOR_SAIN,  "Sains");
-        drawLegendEntry(gc, x, y + 14, COLOR_FEU,   "En feu");
-        drawLegendEntry(gc, x, y + 28, COLOR_BRULE, "Brûlés");
+        drawLegendEntry(gc, x, y + 15, COLOR_FEU,   "En feu");
+        drawLegendEntry(gc, x, y + 30, COLOR_BRULE, "Brûlés");
     }
 
-    /**
-     * Dessine une entrée de légende (carré coloré + libellé).
-     *
-     * @param gc    contexte graphique
-     * @param x     abscisse de l'entrée
-     * @param y     ordonnée de l'entrée
-     * @param color couleur du carré
-     * @param label texte affiché à droite du carré
-     */
-    private void drawLegendEntry(GraphicsContext gc, double x, double y,
-                                 Color color, String label) {
+    private static void drawLegendEntry(GraphicsContext gc, double x, double y,
+                                        Color color, String label) {
         gc.setFill(color);
-        gc.fillRect(x, y - 7, 12, 4);
+        gc.fillRect(x, y - 7, 12, 8);
         gc.setFill(Color.web("#cccccc"));
         gc.setFont(Font.font(10));
         gc.fillText(label, x + 16, y);
