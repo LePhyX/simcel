@@ -68,10 +68,6 @@ public enum CellType {
      * Retourne la couleur hexadécimale d'une cellule saine de ce type de
      * terrain (format {@code #RRGGBB}).
      *
-     * <p>Cette couleur est utilisée par {@link com.simcel.view.GridView}
-     * pour distinguer visuellement les types de terrain à l'état
-     * {@link CellState#SAIN}.</p>
-     *
      * @return couleur hexadécimale, jamais {@code null}
      */
     public String getHealthyColor() {

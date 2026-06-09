@@ -141,8 +141,6 @@ public class ConsoleView {
     /**
      * Analyse et exécute une commande textuelle.
      *
-     * <p>Méthode package-private pour permettre les tests unitaires directs.</p>
-     *
      * @param line ligne saisie par l'utilisateur
      * @param env  environnement cible
      * @param ctrl contrôleur cible

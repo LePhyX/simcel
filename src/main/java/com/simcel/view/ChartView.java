@@ -90,9 +90,6 @@ public class ChartView extends Canvas implements SimulationListener {
         });
     }
 
-    @Override
-    public void onSimulationEnd() {}
-
     /**
      * Vide toutes les séries et redessine le graphique vide.
      * Doit être appelé depuis le thread JavaFX.

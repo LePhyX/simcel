@@ -5,7 +5,6 @@ import com.simcel.model.CellState;
 import com.simcel.model.Environment;
 import com.simcel.model.FireSimulator;
 import com.simcel.model.Grid;
-import com.simcel.model.SimulationListener;
 import com.simcel.model.WindDirection;
 import com.simcel.view.ConsoleView;
 import com.simcel.view.MainWindow;
@@ -84,8 +83,6 @@ public class Main extends Application {
      * Lance la simulation en mode console (headless).
      *
      * @param args arguments de la ligne de commande
-     * @throws InterruptedException si le thread est interrompu pendant
-     * l'attente
      */
     private static void runCLI(String[] args) {
         int width = 40;
@@ -128,18 +125,11 @@ public class Main extends Application {
         final boolean[] done     = {false};
         final int[]     lastTick = {0};
 
-        simulator.addListener(new SimulationListener() {
-            @Override
-            public void onTick(int tick, Grid g) {
-                view.render(tick, g);
-                lastTick[0] = tick;
-                if (tick >= finalMaxTicks || !hasActiveFire(g)) {
-                    done[0] = true;
-                }
-            }
-
-            @Override
-            public void onSimulationEnd() {
+        simulator.addListener((tick, g) -> {
+            view.render(tick, g);
+            lastTick[0] = tick;
+            if (tick >= finalMaxTicks || !hasActiveFire(g)) {
+                done[0] = true;
             }
         });
 

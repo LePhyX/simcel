@@ -92,9 +92,6 @@ public final class GridView extends Canvas implements SimulationListener {
         Platform.runLater(() -> draw(snapshot));
     }
 
-    @Override
-    public void onSimulationEnd() {}
-
     // -------------------------------------------------------------------------
     // API publique
     // -------------------------------------------------------------------------

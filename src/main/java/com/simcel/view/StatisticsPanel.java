@@ -119,10 +119,6 @@ public class StatisticsPanel extends VBox implements SimulationListener {
         });
     }
 
-    /** Aucune action requise à la fin de la simulation. */
-    @Override
-    public void onSimulationEnd() {}
-
     /**
      * Remet les labels et barres à leur état initial.
      * Doit être appelé depuis le thread JavaFX.

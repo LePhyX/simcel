@@ -89,6 +89,4 @@ public class HeaderBar extends HBox implements SimulationListener {
         Platform.runLater(() -> lblTick.setText("T " + tick));
     }
 
-    @Override
-    public void onSimulationEnd() {}
 }
