@@ -14,12 +14,10 @@
     <description>Automate cellulaire 2D — simulation d'incendie (Projet Génie Logiciel)</description>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>21.0.2</javafx.version>
-        <junit.version>5.10.2</junit.version>
-        <mainClass>com.simcel/com.simcel.Main</mainClass>
+        <mainClass>com.simcel.Main</mainClass>
     </properties>
 
     <dependencies>
@@ -28,19 +26,6 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-fxml</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-
-        <!-- JUnit 5 -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -52,18 +37,20 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.12.1</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
+                    <release>21</release>
                 </configuration>
             </plugin>
 
-            <!-- Tests JUnit 5 -->
+            <!-- Lancement CLI : mvn exec:java -->
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
                 <configuration>
-                    <useModulePath>false</useModulePath>
+                    <mainClass>com.simcel.Main</mainClass>
+                    <arguments>
+                        <argument>--headless</argument>
+                    </arguments>
                 </configuration>
             </plugin>
 
@@ -74,6 +61,9 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>${mainClass}</mainClass>
+                    <options>
+                        <option>--add-modules=javafx.controls</option>
+                    </options>
                 </configuration>
             </plugin>
         </plugins>

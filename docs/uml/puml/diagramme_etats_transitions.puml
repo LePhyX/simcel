@@ -1,0 +1,67 @@
+@startuml diagramme_etats_transitions
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam state {
+  BackgroundColor #F5F5F5
+  BorderColor #777777
+  FontSize 12
+  ArrowColor #444444
+}
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #C8A800
+
+title Diagramme d'états-transitions — Cycle de vie d'une cellule\nSimulation de Propagation de Feu · Issue #11 · Milestone M1
+
+' ── États terminaux (créés à l'initialisation, jamais modifiés) ──
+state "VIDE\nSans végétation" as VIDE #EEEEEE
+state "ROCHER\nObstacle infranchissable" as ROCHER #EEEEEE
+state "EAU\nCellule aquatique" as EAU #BBDEFB
+
+' ── Cycle principal ──────────────────────────────────────────────
+state "SAIN\nVégétation intacte" as SAIN #C8E6C9
+state "EN_FEU\nEn cours de combustion" as EN_FEU #FFCCBC
+state "BRULE\nVégétation consumée" as BRULE #BDBDBD
+
+' ── Transitions d'initialisation ─────────────────────────────────
+[*] --> VIDE   : init()
+[*] --> SAIN   : init()
+[*] --> ROCHER : init()
+[*] --> EAU    : init()
+
+' ── États terminaux ──────────────────────────────────────────────
+VIDE   --> [*]
+ROCHER --> [*]
+EAU    --> [*]
+BRULE  --> [*]
+
+' ── Cycle de vie de la combustion ────────────────────────────────
+SAIN --> EN_FEU : ignite()\n[rand < P(terrain, vent, humidité)]
+EN_FEU --> BRULE : burnOut()\n[remainingBurnTime = 0]
+
+' ── Notes ────────────────────────────────────────────────────────
+note right of EN_FEU
+  decrementBurnTime() appelé à chaque tick
+  par FireSimulator.applyExtinctions()
+end note
+
+note bottom
+  **Notes d'implémentation Java**
+  SAIN → EN_FEU : Cell.ignite() appelée par FireSimulator.tick()
+  si rand < computeInflammationProbability(source, target)
+
+  EN_FEU → BRULE : Cell.burnOut() appelée par FireSimulator.tick()
+  si cell.decrementBurnTime() retourne remainingBurnTime = 0
+
+  VIDE, EAU, ROCHER : fixés à la construction de la grille
+  (Grid.initRandom / chargement fichier) — jamais modifiés ensuite
+end note
+
+legend bottom right
+|= Symbole |= Signification |
+| ● | État initial |
+| ◎ | État terminal (irréversible) |
+| ──► | Transition |
+| [garde] / appel() | Condition de déclenchement |
+endlegend
+
+@enduml

@@ -1,0 +1,294 @@
+@startuml diagramme_classes
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam linetype ortho
+skinparam classBackgroundColor #F9F9F9
+skinparam classBorderColor #777777
+skinparam arrowColor #444444
+skinparam arrowThickness 1.2
+skinparam classHeaderBackgroundColor #EEEEEE
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #C8A800
+
+title Diagramme de classes — Simulation de propagation de feu\nIssue #10 · M1 · Suite du modèle · v2.1
+
+' ───────────────────────────────────────────────
+' LÉGENDE
+' ───────────────────────────────────────────────
+legend top right
+|= Notation |= Signification |
+| <back:#FFF8DC>Enum</back> | Énumération |
+| <back:#C8E6C9>Classe</back> | Classe modèle |
+| <back:#FFE0B2>Ctrl</back> | Contrôleur |
+| <back:#E1BEE7>Vue</back> | Vue |
+| ─►  | dépendance |
+| ◆──  | composition |
+| ──▷  | implémentation |
+endlegend
+
+' ───────────────────────────────────────────────
+' ÉNUMÉRATIONS
+' ───────────────────────────────────────────────
+enum CellState #FFF8DC {
+  VIDE
+  SAIN
+  EN_FEU
+  BRULE
+  EAU
+  ROCHER
+  ..
+  + getColor() : String
+  + isFlammable() : boolean
+  + isSpreading() : boolean
+}
+
+enum CellType #FFF8DC {
+  FORET
+  PRAIRIE
+  BROUSSAILLES
+  ZONE_HUMIDE
+  ZONE_URBAINE
+  ..
+  + getInflammability() : double
+  + getBurnDuration() : int
+  + getHealthyColor() : String
+}
+
+enum WindDirection #FFF8DC {
+  N · NE · E · SE
+  S · SO · O · NO
+  ..
+  + getDx() : int
+  + getDy() : int
+}
+
+enum SimulationState #FFF8DC {
+  IDLE
+  RUNNING
+  PAUSED
+}
+
+' ───────────────────────────────────────────────
+' INTERFACE
+' ───────────────────────────────────────────────
+interface SimulationListener <<interface>> #E8F5E9 {
+  + onTick(tick : int, grid : Grid) : void
+  + onSimulationEnd() : void
+}
+
+' ───────────────────────────────────────────────
+' MODEL
+' ───────────────────────────────────────────────
+class Cell #C8E6C9 {
+  - state : CellState
+  - type : CellType
+  - remainingBurnTime : int
+  ..
+  + Cell(type : CellType)
+  + getState() : CellState
+  + getType() : CellType
+  + getRemainingBurnTime() : int
+  + setState(state : CellState) : void
+  + ignite() : void
+  + burnOut() : void
+  + decrementBurnTime() : void
+  + copy() : Cell
+}
+
+class Environment #C8E6C9 {
+  - direction : WindDirection
+  - windStrength : int
+  - humidity : int
+  ..
+  + Environment()
+  + Environment(d, w, h)
+  + getDirection() : WindDirection
+  + getWindStrength() : int
+  + getHumidity() : int
+  + setDirection(d : WindDirection) : void
+  + setWindStrength(w : int) : void
+  + setHumidity(h : int) : void
+}
+
+class Grid #C8E6C9 {
+  - width : int
+  - height : int
+  - cells : Cell[][]
+  - initialCells : Cell[][]
+  ..
+  + Grid(width : int, height : int)
+  + isInBounds(x, y) : boolean
+  + getCell(x, y) : Cell
+  + setCell(x, y, c : Cell) : void
+  + getNeighbors(x, y) : List<Cell>
+  + initRandom(...) : void
+  + saveInitialState() : void
+  + reset() : void
+  + setFire(x, y) : void
+  + getWidth() : int
+  + getHeight() : int
+  + copyCells() : Cell[][]
+  + copyInitialCells() : Cell[][]
+  + restoreState(cells, init) : void
+}
+
+class FireSimulator #C8E6C9 {
+  - grid : Grid
+  - environment : Environment
+  - listeners : List<SimulationListener>
+  - random : Random
+  - history : Deque<Cell[][]>
+  - currentTick : int
+  ..
+  + FireSimulator(g : Grid, e : Environment)
+  + tick() : void
+  + getGrid() : Grid
+  + getEnvironment() : Environment
+  + addListener(l : SimulationListener) : void
+  + stepBack() : boolean
+  + clearHistory() : void
+  + createSnapshot() : SimulationSnapshot
+  + applySnapshot(s : SimulationSnapshot) : void
+}
+
+class SimulationSnapshot #C8E6C9 {
+  - width : int
+  - height : int
+  - cells : Cell[][]
+  - initialCells : Cell[][]
+  - windDirection : WindDirection
+  - windStrength : int
+  - humidity : int
+  - tick : int
+  ..
+  + SimulationSnapshot(...)
+  + getWidth() : int
+  + getHeight() : int
+  + getCells() : Cell[][]
+  + getInitialCells() : Cell[][]
+  + getWindDirection() : WindDirection
+  + getWindStrength() : int
+  + getHumidity() : int
+  + getTick() : int
+}
+
+class SimulationIO #C8E6C9 {
+  ..
+  + {static} save(f : File, s : SimulationSnapshot) : void
+  + {static} load(f : File) : SimulationSnapshot
+}
+
+' ───────────────────────────────────────────────
+' CONTROLLER
+' ───────────────────────────────────────────────
+class SimulationController #FFE0B2 {
+  - simulator : FireSimulator
+  - state : SimulationState
+  - tickDelay : int
+  - simulationThread : Thread
+  ..
+  + SimulationController(s : FireSimulator, delay : int)
+  + start() : void
+  + pause() : void
+  + step() : void
+  + stop() : void
+  + reset() : void
+  + stepBack() : boolean
+  + setTickDelay(ms : int) : void
+  + getTickDelay() : int
+  + saveToFile(f : File) : void
+  + loadFromFile(f : File) : void
+}
+
+' ───────────────────────────────────────────────
+' VIEW
+' ───────────────────────────────────────────────
+class MainWindow #E1BEE7 {
+  - simulator : FireSimulator
+  - controller : SimulationController
+  - grid : Grid
+  ..
+  + MainWindow(sim, ctrl)
+  + show(stage : Stage) : void
+}
+
+class GridView #E1BEE7 {
+  - cellSize : double
+  ..
+  + GridView(grid : Grid, cellSize : double)
+  + onTick(tick : int, grid : Grid) : void
+  + onSimulationEnd() : void
+  + refresh(grid : Grid) : void
+  + getCellAt(x, y) : int[]
+}
+
+class StatisticsPanel #E1BEE7 {
+  ..
+  + onTick(tick : int, grid : Grid) : void
+  + onSimulationEnd() : void
+  + reset() : void
+}
+
+class ChartView #E1BEE7 {
+  ..
+  + onTick(tick : int, grid : Grid) : void
+  + onSimulationEnd() : void
+  + clear() : void
+  + removeLastPoint() : void
+}
+
+class LegendPanel #E1BEE7 {
+  ..
+  + LegendPanel()
+}
+
+class WindIndicator #E1BEE7 {
+  ..
+  + WindIndicator(env : Environment)
+  + refresh(env : Environment) : void
+}
+
+class ConsoleView #E1BEE7 {
+  ..
+  + render(tick : int, grid : Grid) : void
+  + printLegend() : void
+  + printStats(tick : int, grid : Grid) : void
+  + startCommandListener(env, ctrl) : void
+}
+
+' ───────────────────────────────────────────────
+' RELATIONS
+' ───────────────────────────────────────────────
+Cell --> CellState
+Cell --> CellType
+
+Environment --> WindDirection
+
+Grid "1" *--> "1..*" Cell : cells[][]
+
+FireSimulator "1" o--> "1" Grid
+FireSimulator "1" o--> "1" Environment
+FireSimulator "1" o--> "*" SimulationListener : listeners
+FireSimulator ..> SimulationSnapshot : <<crée>>
+
+SimulationIO ..> SimulationSnapshot : <<utilise>>
+
+SimulationController "1" o--> "1" FireSimulator
+SimulationController --> SimulationState
+SimulationController ..> SimulationIO : <<utilise>>
+
+GridView ..|> SimulationListener
+StatisticsPanel ..|> SimulationListener
+ChartView ..|> SimulationListener
+ConsoleView ..|> SimulationListener
+
+MainWindow o--> SimulationController
+MainWindow o--> FireSimulator
+MainWindow o--> GridView
+MainWindow o--> StatisticsPanel
+MainWindow o--> ChartView
+MainWindow o--> LegendPanel
+MainWindow o--> WindIndicator
+
+@enduml
