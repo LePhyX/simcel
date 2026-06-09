@@ -30,9 +30,9 @@ public class Environment implements java.io.Serializable {
     /** Humidité maximale (%). */
     public static final int MAX_HUMIDITY = 100;
 
-    private volatile WindDirection direction;
-    private volatile int windStrength;
-    private volatile int humidity;
+    private WindDirection direction;
+    private int windStrength;
+    private int humidity;
 
     /**
      * Crée un environnement par défaut : vent nul vers le Nord, humidité 50 %.

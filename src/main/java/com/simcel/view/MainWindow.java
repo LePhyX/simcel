@@ -292,9 +292,7 @@ public class MainWindow {
         gridPane = new Pane(gridView);
         gridPane.getStyleClass().add("grid-pane");
 
-        Rectangle clip = new Rectangle();
-        clip.widthProperty().bind(gridPane.widthProperty());
-        clip.heightProperty().bind(gridPane.heightProperty());
+        Rectangle clip = new Rectangle(gridPane.getPrefWidth(), gridPane.getPrefHeight());
         gridPane.setClip(clip);
 
         gridPane.setCursor(Cursor.OPEN_HAND);
