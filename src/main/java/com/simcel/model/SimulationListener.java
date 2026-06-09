@@ -1,26 +1,24 @@
 package com.simcel.model;
 
 /**
- * Observateur du cycle de vie de la simulation (pattern Observer).
+ * Observateur du cycle de vie de la simulation (patron Observer).
  *
- * <p>
- * Les implémentations sont enregistrées via
+ * <p>Les implémentations sont enregistrées via
  * {@link FireSimulator#addListener(SimulationListener)} et reçoivent une
- * notification à chaque tick et à la fin de la simulation.</p>
+ * notification à chaque tick.</p>
+ *
+ * <p>Interface fonctionnelle : une expression lambda suffit pour une
+ * implémentation simple.</p>
  */
+@FunctionalInterface
 public interface SimulationListener {
 
     /**
-     * Appelé après chaque tick de simulation, une fois tous les changements
-     * d'état appliqués à la grille.
+     * Appelé après chaque tick, une fois tous les changements d'état
+     * appliqués à la grille.
      *
-     * @param tick numéro du tick qui vient de s'écouler (commence à 1)
-     * @param grid référence à la grille dans son état mis à jour
+     * @param tick numéro du tick écoulé (commence à 1)
+     * @param grid grille dans son état mis à jour
      */
     void onTick(int tick, Grid grid);
-
-    /**
-     * Appelé lorsque la simulation se termine (fin naturelle ou arrêt forcé).
-     */
-    void onSimulationEnd();
 }

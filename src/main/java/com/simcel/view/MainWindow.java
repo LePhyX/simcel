@@ -292,7 +292,9 @@ public class MainWindow {
         gridPane = new Pane(gridView);
         gridPane.getStyleClass().add("grid-pane");
 
-        Rectangle clip = new Rectangle(gridPane.getPrefWidth(), gridPane.getPrefHeight());
+        Rectangle clip = new Rectangle();
+        clip.widthProperty().bind(gridPane.widthProperty());
+        clip.heightProperty().bind(gridPane.heightProperty());
         gridPane.setClip(clip);
 
         gridPane.setCursor(Cursor.OPEN_HAND);
@@ -592,17 +594,11 @@ public class MainWindow {
     // -------------------------------------------------------------------------
 
     private SimulationListener stoppingListener() {
-        return new SimulationListener() {
-            @Override
-            public void onTick(int tick, Grid g) {
-                if (!hasActiveFire(g)) {
-                    controller.stop();
-                    Platform.runLater(() -> setIdleState());
-                }
+        return (tick, g) -> {
+            if (!hasActiveFire(g)) {
+                controller.stop();
+                Platform.runLater(this::setIdleState);
             }
-
-            @Override
-            public void onSimulationEnd() {}
         };
     }
 
