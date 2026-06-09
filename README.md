@@ -157,8 +157,7 @@ mvn javadoc:javadoc  # Javadoc → target/site/apidocs/
 
 ## Diagrammes UML
 
-Disponibles dans [`docs/uml/`](docs/uml/).  
-Documentation technique détaillée : [`docs/details.md`](docs/details.md).
+Disponibles dans [`docs/uml/`](docs/uml/) (sources PlantUML dans [`docs/uml/puml/`](docs/uml/puml/)).
 
 ---
 
