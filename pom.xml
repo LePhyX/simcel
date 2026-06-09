@@ -18,7 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>21.0.2</javafx.version>
         <junit.version>5.10.2</junit.version>
-        <mainClass>com.simcel/com.simcel.Main</mainClass>
+        <mainClass>com.simcel.Main</mainClass>
     </properties>
 
     <dependencies>
@@ -79,6 +79,9 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>${mainClass}</mainClass>
+                    <options>
+                        <option>--add-modules=javafx.controls</option>
+                    </options>
                 </configuration>
             </plugin>
         </plugins>
