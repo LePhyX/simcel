@@ -2,9 +2,6 @@ package com.simcel.controller;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import com.simcel.model.FireSimulator;
 import com.simcel.model.SimulationIO;
@@ -14,25 +11,26 @@ import com.simcel.model.SimulationState;
 /**
  * Contrôleur de la boucle de simulation.
  *
- * <p>Orchestre le cycle de vie du {@link FireSimulator} en gérant un thread
- * planifié ({@link ScheduledExecutorService}) qui appelle {@code tick()} à
- * intervalle régulier. Toutes les méthodes publiques sont {@code synchronized}
- * pour garantir leur thread-safety.</p>
+ * <p>
+ * Orchestre le cycle de vie du {@link FireSimulator} en gérant un thread
+ * ({@link Thread}) qui appelle {@code tick()} à intervalle régulier via
+ * {@link Thread#sleep(long)}.</p>
  *
- * <p>Diagramme d'états :</p>
+ * <p>
+ * Diagramme d'états :</p>
  * <pre>
  *   IDLE ──start()──► RUNNING ──pause()──► PAUSED
- *    ▲                   │                    │
+ *    ▲                   │                     │
  *    └────stop()─────────┘◄────────────────────┘
  * </pre>
  */
 public class SimulationController {
 
     private final FireSimulator simulator;
-    private volatile SimulationState state;
-    private volatile int tickDelay;
+    private SimulationState state;
+    private int tickDelay;
 
-    private ScheduledExecutorService executor;
+    private Thread simulationThread;
 
     /**
      * Crée un contrôleur pour le simulateur donné.
@@ -42,47 +40,66 @@ public class SimulationController {
      */
     public SimulationController(FireSimulator simulator, int tickDelay) {
         this.simulator = simulator;
-        this.state     = SimulationState.IDLE;
+        this.state = SimulationState.IDLE;
         this.tickDelay = tickDelay;
     }
 
     /**
-     * Lance la boucle de simulation dans un thread séparé.
-     * Sans effet si la simulation est déjà {@link SimulationState#RUNNING}.
+     * Lance la boucle de simulation dans un thread séparé. Sans effet si la
+     * simulation est déjà {@link SimulationState#RUNNING}.
      */
-    public synchronized void start() {
-        if (state == SimulationState.RUNNING) return;
-        state    = SimulationState.RUNNING;
-        executor = Executors.newSingleThreadScheduledExecutor();
-        executor.scheduleAtFixedRate(this::doTick, 0, tickDelay, TimeUnit.MILLISECONDS);
+    public void start() {
+        if (state == SimulationState.RUNNING) {
+            return;
+        }
+        state = SimulationState.RUNNING;
+        simulationThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!Thread.currentThread().isInterrupted()) {
+                    doTick();
+                    try {
+                        Thread.sleep(tickDelay);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                }
+            }
+        });
+        simulationThread.setDaemon(true);
+        simulationThread.start();
     }
 
     /**
-     * Suspend la boucle sans réinitialiser l'état de la grille.
-     * Sans effet si la simulation n'est pas {@link SimulationState#RUNNING}.
+     * Suspend la boucle sans réinitialiser l'état de la grille. Sans effet si
+     * la simulation n'est pas {@link SimulationState#RUNNING}.
      */
-    public synchronized void pause() {
-        if (state != SimulationState.RUNNING) return;
+    public void pause() {
+        if (state != SimulationState.RUNNING) {
+            return;
+        }
         state = SimulationState.PAUSED;
-        shutdownExecutor();
+        stopThread();
     }
 
     /**
-     * Exécute exactement un tick manuellement.
-     * Sans effet si la simulation est {@link SimulationState#RUNNING}.
+     * Exécute exactement un tick manuellement. Sans effet si la simulation est
+     * {@link SimulationState#RUNNING}.
      */
-    public synchronized void step() {
-        if (state == SimulationState.RUNNING) return;
+    public void step() {
+        if (state == SimulationState.RUNNING) {
+            return;
+        }
         doTick();
     }
 
     /**
-     * Arrête la boucle et repasse en {@link SimulationState#IDLE}.
-     * L'état de la grille n'est pas modifié ; utiliser {@link #reset()} pour
-     * revenir à l'état initial.
+     * Arrête la boucle et repasse en {@link SimulationState#IDLE}. L'état de la
+     * grille n'est pas modifié ; utiliser {@link #reset()} pour revenir à
+     * l'état initial.
      */
-    public synchronized void stop() {
-        shutdownExecutor();
+    public void stop() {
+        stopThread();
         state = SimulationState.IDLE;
     }
 
@@ -90,36 +107,51 @@ public class SimulationController {
      * Arrête la boucle, remet la grille dans son état initial et repasse en
      * {@link SimulationState#IDLE}.
      */
-    public synchronized void reset() {
+    public void reset() {
         stop();
         simulator.getGrid().reset();
         simulator.clearHistory();
     }
 
     /**
-     * Recule la simulation d'un tick en restaurant l'état précédent.
-     * Sans effet si la simulation est {@link SimulationState#RUNNING} ou
-     * si l'historique est vide.
+     * Recule la simulation d'un tick en restaurant l'état précédent. Sans effet
+     * si la simulation est {@link SimulationState#RUNNING} ou si l'historique
+     * est vide.
      *
      * @return {@code true} si un état précédent a été restauré
      */
-    public synchronized boolean stepBack() {
-        if (state == SimulationState.RUNNING) return false;
+    public boolean stepBack() {
+        if (state == SimulationState.RUNNING) {
+            return false;
+        }
         return simulator.stepBack();
     }
 
     /**
-     * Modifie l'intervalle entre deux ticks.
-     * Si la simulation est en cours, la boucle est redémarrée avec le nouvel intervalle.
+     * Modifie l'intervalle entre deux ticks. Si la simulation est en cours, la
+     * boucle est redémarrée avec le nouvel intervalle.
      *
      * @param ms nouvel intervalle en millisecondes (&gt; 0)
      */
-    public synchronized void setTickDelay(int ms) {
+    public void setTickDelay(int ms) {
         this.tickDelay = ms;
         if (ms >= 1 && state == SimulationState.RUNNING) {
-            shutdownExecutor();
-            executor = Executors.newSingleThreadScheduledExecutor();
-            executor.scheduleAtFixedRate(this::doTick, 0, ms, TimeUnit.MILLISECONDS);
+            stopThread();
+            simulationThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (!Thread.currentThread().isInterrupted()) {
+                        doTick();
+                        try {
+                            Thread.sleep(tickDelay);
+                        } catch (InterruptedException e) {
+                            break;
+                        }
+                    }
+                }
+            });
+            simulationThread.setDaemon(true);
+            simulationThread.start();
         }
     }
 
@@ -133,26 +165,28 @@ public class SimulationController {
     }
 
     /**
-     * Saves the current simulation state to a binary file.
+     * Sauvegarde l'état courant de la simulation dans un fichier binaire.
      *
-     * @param file destination file
-     * @throws IOException if writing fails
+     * @param file fichier destination
+     * @throws IOException si l'écriture échoue
      */
-    public synchronized void saveToFile(File file) throws IOException {
+    public void saveToFile(File file) throws IOException {
         SimulationIO.save(file, simulator.createSnapshot());
     }
 
     /**
-     * Restores the simulation state from a binary file.
-     * Pauses the simulation first if running, then applies the snapshot.
+     * Restaure l'état de la simulation depuis un fichier binaire. Met la
+     * simulation en pause si elle est en cours, puis applique le snapshot.
      *
-     * @param file source file
-     * @throws IOException            if reading fails
-     * @throws ClassNotFoundException if the file format is incompatible
-     * @throws IllegalArgumentException if snapshot grid dimensions differ
+     * @param file fichier source
+     * @throws IOException si la lecture échoue
+     * @throws ClassNotFoundException si le format de fichier est incompatible
+     * @throws IllegalArgumentException si les dimensions de la grille diffèrent
      */
-    public synchronized void loadFromFile(File file) throws IOException, ClassNotFoundException {
-        if (state == SimulationState.RUNNING) pause();
+    public void loadFromFile(File file) throws IOException, ClassNotFoundException {
+        if (state == SimulationState.RUNNING) {
+            pause();
+        }
         SimulationSnapshot snapshot = SimulationIO.load(file);
         simulator.applySnapshot(snapshot);
         state = SimulationState.PAUSED;
@@ -166,10 +200,10 @@ public class SimulationController {
         simulator.tick();
     }
 
-    private void shutdownExecutor() {
-        if (executor != null) {
-            executor.shutdown();
-            executor = null;
+    private void stopThread() {
+        if (simulationThread != null) {
+            simulationThread.interrupt();
+            simulationThread = null;
         }
     }
 }

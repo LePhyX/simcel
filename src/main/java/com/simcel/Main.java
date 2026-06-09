@@ -1,8 +1,5 @@
 package com.simcel;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.simcel.controller.SimulationController;
 import com.simcel.model.CellState;
 import com.simcel.model.Environment;
@@ -128,16 +125,16 @@ public class Main extends Application {
         ConsoleView view = new ConsoleView();
 
         int finalMaxTicks = maxTicks;
-        CountDownLatch done = new CountDownLatch(1);
-        AtomicInteger lastTick = new AtomicInteger(0);
+        final boolean[] done     = {false};
+        final int[]     lastTick = {0};
 
         simulator.addListener(new SimulationListener() {
             @Override
             public void onTick(int tick, Grid g) {
                 view.render(tick, g);
-                lastTick.set(tick);
+                lastTick[0] = tick;
                 if (tick >= finalMaxTicks || !hasActiveFire(g)) {
-                    done.countDown();
+                    done[0] = true;
                 }
             }
 
@@ -150,12 +147,19 @@ public class Main extends Application {
         System.out.println("Simulation démarrée. Tapez 'help' pour la liste des commandes.");
         view.startCommandListener(env, ctrl);
         ctrl.start();
-        try { done.await(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        while (!done[0]) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
         ctrl.stop();
 
         System.out.println("\n=== Simulation terminée ===");
-        System.out.printf("Ticks écoulés : %d%n", lastTick.get());
-        view.printStats(lastTick.get(), grid);
+        System.out.printf("Ticks écoulés : %d%n", lastTick[0]);
+        view.printStats(lastTick[0], grid);
         System.exit(0);
     }
 
