@@ -1,0 +1,102 @@
+@startuml diagramme_sequence
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam sequenceArrowThickness 1.5
+skinparam sequenceGroupBorderColor #888888
+skinparam sequenceGroupBackgroundColor #FAFAFA
+skinparam sequenceGroupFontSize 11
+skinparam participantBackgroundColor #F5F5F5
+skinparam participantBorderColor #777777
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #C8A800
+skinparam lifelineBorderColor #888888
+
+title Diagramme de séquence — tick() de simulation\nIssue #16 · M2 — Moteur de simulation · Simulation de Propagation de Feu
+
+participant "Simulation\nController" as SC #D0E4FF
+participant "Fire\nSimulator" as FS #C8E6C9
+participant "Grid\nstructure 2D" as G #BBDEFB
+participant "Cell\ncellule cible" as C #FFCDD2
+participant "Views\n(GridView, Stats,\nChartView...)" as V #F3E5F5
+
+autonumber
+
+== Déclenchement par le Thread de simulation ==
+
+SC -> FS : tick()
+activate FS
+
+== Sauvegarde historique (retour arrière) ==
+
+FS -> FS : pushHistory()
+note right : copie profonde Cell[][]\ndans history (Deque)
+
+== Double buffering — snapshot des états ==
+
+group double buffering
+  FS -> FS : takeSnapshot()
+  note right : capture CellState[][]\nsans copier les cellules
+  FS --> FS : snapshot : CellState[][]
+end
+
+== Calcul des propagations ==
+
+group loop [EN_FEU] pour chaque cellule source en feu
+  FS -> G : getCell(x, y)
+  G --> FS : cell source
+
+  group loop [voisin SAIN] pour chaque voisin éligible
+    FS -> FS : computeInflammationProbability\n(srcX, srcY, tgtX, tgtY, tgt)
+    FS --> FS : → double P
+
+    opt [rand < P]
+      FS -> FS : toIgnite.add(neighbor)
+    end
+  end
+end
+
+== Application des ignitions ==
+
+group loop [toIgnite]
+  FS -> C : ignite()
+  activate C
+  C --> FS
+  deactivate C
+end
+
+== Application des extinctions ==
+
+group loop [EN_FEU dans snapshot]
+  FS -> C : decrementBurnTime()
+  activate C
+  C --> FS
+  deactivate C
+
+  opt [remainingBurnTime = 0]
+    FS -> C : burnOut()
+    activate C
+    note right : état → BRULE
+    C --> FS
+    deactivate C
+  end
+end
+
+== Notification des vues (pattern Observer) ==
+
+FS -> V : notifyListeners()\nonTick(tick, grid)
+activate V
+note right : Platform.runLater() utilisé\npour revenir sur le thread JavaFX
+V --> FS
+deactivate V
+
+FS --> SC : tick terminé
+deactivate FS
+
+legend bottom
+|= Notation |= Signification |
+| ──► | appel de méthode |
+| ◄ - - | retour / réponse |
+| [ ] | boucle / zone conditionnelle |
+endlegend
+
+@enduml
