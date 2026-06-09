@@ -1,0 +1,68 @@
+@startuml diagramme_cas_utilisation
+left to right direction
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #DDEEFF
+  BorderColor #336699
+  FontSize 12
+}
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam arrowColor #444444
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontSize 12
+
+title Diagramme de cas d'utilisation\nSimulation de propagation de feu
+
+actor Utilisateur as U
+actor Système as S
+
+rectangle "«système» Simulation de propagation de feu" {
+
+  ' ── Cas d'utilisation Utilisateur ──────────────────
+  usecase "Configurer\nl'environnement" as UC1 #DDEEFF
+  usecase "Initialiser et lancer\nla simulation" as UC2 #DDEEFF
+  usecase "Contrôler\nla simulation" as UC3 #DDEEFF
+  usecase "Visualiser\nla grille (GUI)" as UC4 #DDEEFF
+  usecase "Lancer en\nmode console" as UC5 #DDEEFF
+  usecase "Sauvegarder /\nCharger la simulation" as UC6 #DDEEFF
+
+  ' ── Cas d'utilisation Système ──────────────────────
+  usecase "Calculer la propagation\nà chaque tick" as UC7 #C8E6C9
+  usecase "Mettre à jour les états\ndes cellules" as UC8 #C8E6C9
+  usecase "Notifier la vue\n(pattern Observer)" as UC9 #C8E6C9
+}
+
+' ── Associations Utilisateur ───────────────────────
+U --> UC1
+U --> UC2
+U --> UC3
+U --> UC4
+U --> UC5
+U --> UC6
+
+' ── Associations Système ───────────────────────────
+S --> UC7
+S --> UC8
+S --> UC9
+
+' ── Relations entre UC ────────────────────────────
+UC2 .> UC7 : «include»
+UC7 .> UC8 : «include»
+UC8 .> UC9 : «include»
+UC4 .> UC9 : «include»
+UC5 .> UC8 : «include»
+UC3 .> UC4 : «extend»
+
+legend bottom
+|= Notation |= Signification |
+| <back:#DDEEFF>UC bleu</back> | Cas d'utilisation Utilisateur |
+| <back:#C8E6C9>UC vert</back> | Cas d'utilisation Système |
+| - - ► «include» | relation d'inclusion obligatoire |
+| - - ► «extend» | relation d'extension optionnelle |
+endlegend
+
+@enduml
